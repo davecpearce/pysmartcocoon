@@ -5,7 +5,7 @@ import aiohttp
 
 import pytest
 
-from pysmartcocoon import Client
+from pysmartcocoon.client import Client
 
 # Enter correct real values here for the tests to complete successfully with real SmartCocoon Server calls.
 USERNAME = "user@domain.com"

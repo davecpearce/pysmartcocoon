@@ -7,6 +7,12 @@ class SmartCocoonError(Exception):
     pass
 
 
+class UnauthorizedError(SmartCocoonError):
+    """Define an error related to invalid requests."""
+
+    pass
+
+
 class RequestError(SmartCocoonError):
     """Define an error related to invalid requests."""
 

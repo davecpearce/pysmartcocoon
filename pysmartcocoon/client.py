@@ -22,7 +22,10 @@ from pysmartcocoon.const import DEFAULT_TIMEOUT
 from pysmartcocoon.const import FanMode
 from pysmartcocoon.const import EntityType
 
-from pysmartcocoon.errors import RequestError, TokenExpiredError, raise_remote_error
+from pysmartcocoon.errors import RequestError
+from pysmartcocoon.errors import UnauthorizedError
+from pysmartcocoon.errors import TokenExpiredError
+from pysmartcocoon.errors import raise_remote_error
 
 from pysmartcocoon.location import Location
 from pysmartcocoon.thermostat import Thermostat
@@ -108,7 +111,7 @@ class Client:
                     _raise_for_remote_status(url, data)
         except ClientError as err:
             if "401" in str(err):
-                raise TokenExpiredError("Long-lived access token has expired") from err
+                raise UnauthorizedError("Login credentials are invalid") from err
             raise RequestError(f"Error requesting data from {url}") from err
         except asyncio.TimeoutError as err:
             raise RequestError(f"Timeout during request: {url}") from err

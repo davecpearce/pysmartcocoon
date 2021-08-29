@@ -14,20 +14,20 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from .const import API_HEADERS
-from .const import API_URL
-from .const import API_AUTH_URL
-from .const import API_FANS_URL
-from .const import DEFAULT_TIMEOUT
-from .const import FanMode
-from .const import EntityType
+from pysmartcocoon.const import API_HEADERS
+from pysmartcocoon.const import API_URL
+from pysmartcocoon.const import API_AUTH_URL
+from pysmartcocoon.const import API_FANS_URL
+from pysmartcocoon.const import DEFAULT_TIMEOUT
+from pysmartcocoon.const import FanMode
+from pysmartcocoon.const import EntityType
 
-from .errors import RequestError, TokenExpiredError, raise_remote_error
+from pysmartcocoon.errors import RequestError, TokenExpiredError, raise_remote_error
 
-from .location import Location
-from .thermostat import Thermostat
-from .room import Room
-from .fan import Fan
+from pysmartcocoon.location import Location
+from pysmartcocoon.thermostat import Thermostat
+from pysmartcocoon.room import Room
+from pysmartcocoon.fan import Fan
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 

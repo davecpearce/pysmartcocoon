@@ -8,9 +8,9 @@ import pytest
 from pysmartcocoon import Client
 
 # Enter correct real values here for the tests to complete successfully with real SmartCocoon Server calls.
-#USERNAME = "user@domain.com"
-#PASSWORD = "password"
-#FAN_ID = "1abc23"  # This is the physical fan ID printed om the fan
+USERNAME = "user@domain.com"
+PASSWORD = "password"
+FAN_ID = "1abc23"  # This is the physical fan ID printed om the fan
 
 @pytest.mark.skip("Not an automated test but an example of usage with real values.")
 async def test_integration_fan_control() -> None:

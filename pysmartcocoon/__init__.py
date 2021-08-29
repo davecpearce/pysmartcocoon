@@ -1,4 +1,4 @@
 """SmartCocoon API REST Client."""
-from .client import Client
+from pysmartcocoon.client import Client
 
 __all__ = ["Client"]

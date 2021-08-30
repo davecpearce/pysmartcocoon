@@ -22,7 +22,7 @@ from pysmartcocoon.const import DEFAULT_TIMEOUT
 from pysmartcocoon.const import FanMode
 from pysmartcocoon.const import EntityType
 
-from pysmartcocoon.errors import RequestError
+from pysmartcocoon.errors import RequestError, SmartCocoonError
 from pysmartcocoon.errors import UnauthorizedError
 from pysmartcocoon.errors import TokenExpiredError
 from pysmartcocoon.errors import raise_remote_error
@@ -33,16 +33,6 @@ from pysmartcocoon.room import Room
 from pysmartcocoon.fan import Fan
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
-
-def _raise_for_remote_status(url: str, data: Dict[str, Any]) -> None:
-    """Raise an error from the remote API if necessary."""
-    if data.get("errorType") and data["errorType"] > 0:
-        raise_remote_error(data["errorType"])
-
-    if data.get("statusCode") and data["statusCode"] != 200:
-        raise RequestError(
-            f"Error requesting data from {url}: {data['statusCode']} {data['message']}"
-        )
 
 
 class Client:
@@ -58,6 +48,7 @@ class Client:
         self._request_timeout = request_timeout
 
         self._headersAuth = API_HEADERS
+        self._authenticated = False
 
         """Variables to store SmartCocoon response data"""
         self.locations: Dict[int, Location] = {}
@@ -70,7 +61,9 @@ class Client:
         self,
         username: str,
         password: str
-    ) -> None:
+    ) -> bool:
+
+        self._authenticated = False
 
         # Authenticate with user and pass
         request_body = {}
@@ -78,12 +71,10 @@ class Client:
         request_body["json"]["email"] = username
         request_body["json"]["password"] = password
 
-        response = await self._request(
-            "POST", 
-            API_AUTH_URL, 
-            **request_body
-        )
+        response = await self._request("POST", API_AUTH_URL, **request_body)
 
+        return self._authenticated
+        
 
     async def _request(self, method: str, url: str, **kwargs) -> dict:
         """Make a request using token authentication.
@@ -108,13 +99,13 @@ class Client:
                 async with session.request(method, url, ssl=False, headers=self._headersAuth, **kwargs) as response:
                     response.raise_for_status()
                     data = await response.json(content_type=None)
-                    _raise_for_remote_status(url, data)
         except ClientError as err:
             if "401" in str(err):
-                raise UnauthorizedError("Login credentials are invalid") from err
-            raise RequestError(f"Error requesting data from {url}") from err
+                # Authentication failed
+                return None        
         except asyncio.TimeoutError as err:
-            raise RequestError(f"Timeout during request: {url}") from err
+            _LOGGER.error("API call to SmartCocoon timed out")
+            return None
         finally:
             if not use_running_session:
                 await session.close()
@@ -132,6 +123,7 @@ class Client:
             self._headersAuth["uid"] = data["data"]["email"]
 
             self._user_id: str = data["data"]["id"]
+            self._authenticated = True
 
         return cast(Dict[str, Any], data)
 

@@ -25,7 +25,6 @@ from pysmartcocoon.const import EntityType
 from pysmartcocoon.errors import RequestError, SmartCocoonError
 from pysmartcocoon.errors import UnauthorizedError
 from pysmartcocoon.errors import TokenExpiredError
-from pysmartcocoon.errors import raise_remote_error
 
 from pysmartcocoon.location import Location
 from pysmartcocoon.thermostat import Thermostat

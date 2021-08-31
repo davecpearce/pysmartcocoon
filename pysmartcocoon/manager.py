@@ -1,4 +1,4 @@
-"""Define a client to interact with SmartCocoon"""
+"""Define a manager to interact with SmartCocoon"""
 import asyncio
 
 from aiohttp import ClientSession, ClientTimeout
@@ -34,7 +34,7 @@ from pysmartcocoon.fan import Fan
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
-class Client:
+class SmartCocoonManager:
     """Define the main controller class to communicate with the SmartCocoon cloud API"""
 
     def __init__(
@@ -50,10 +50,10 @@ class Client:
         self._authenticated = False
 
         """Variables to store SmartCocoon response data"""
-        self.locations: Dict[int, Location] = {}
-        self.thermostats: Dict[int, Thermostat] = {}
-        self.rooms: Dict[int, Room] = {}
-        self.fans: Dict[int, Fan] = {}
+        self._locations: Dict[int, Location] = {}
+        self._thermostats: Dict[int, Thermostat] = {}
+        self._rooms: Dict[int, Room] = {}
+        self._fans: Dict[int, Fan] = {}
 
 
     async def authenticate(
@@ -139,7 +139,7 @@ class Client:
         self ) -> Dict[int, Location]:
 
         # Init locations
-        self.locations : Dict[int, Location] = {}
+        self._locations : Dict[int, Location] = {}
 
         entity = EntityType.LOCATIONS.value
         response = await self._request(
@@ -150,16 +150,16 @@ class Client:
         if len(response) != 0:
             for item in response[entity]:
                 location = Location(data=item)
-                self.locations[location.id] = location
+                self._locations[location.id] = location
 
-        return self.locations
+        return self._locations
 
 
     async def _load_thermostats(
         self ) -> Dict[int, Thermostat]:
 
         # Init thermostats
-        self.thermostats : Dict[int, Thermostat] = {}
+        self._thermostats : Dict[int, Thermostat] = {}
 
         entity = EntityType.THERMOSTATS.value
         response = await self._request(
@@ -170,16 +170,16 @@ class Client:
         if len(response) != 0:
             for item in response[entity]:
                 thermostat = Thermostat(data=item)
-                self.thermostats[thermostat.id] = thermostat
+                self._thermostats[thermostat.id] = thermostat
 
-        return self.thermostats
+        return self._thermostats
 
 
     async def _load_rooms(
         self ) -> Dict[int, Room]:
 
         # Init rooms
-        self.rooms : Dict[int, Room] = {}
+        self._rooms : Dict[int, Room] = {}
 
         entity = EntityType.ROOMS.value
         response = await self._request(
@@ -190,16 +190,16 @@ class Client:
         if len(response) != 0:
             for item in response[entity]:
                 room = Room(data=item)
-                self.rooms[room.id] = room
+                self._rooms[room.id] = room
 
-        return self.rooms
+        return self._rooms
 
 
     async def _load_fans(
         self ) -> Dict[int, Fan]:
 
         # Init fans
-        self.fans : Dict[int, Fan] = {}
+        self._fans : Dict[int, Fan] = {}
 
         entity = EntityType.FANS.value
         response = await self._request(
@@ -210,9 +210,33 @@ class Client:
         if len(response) != 0:
             for item in response[entity]:
                 fan = Fan(data=item)
-                self.fans[fan.fan_id] = fan
+                self._fans[fan.fan_id] = fan
 
-        return self.fans
+        return self._fans
+
+
+    async def get_locations(
+        self ) -> Dict[int, Location]:
+
+        return self._locations
+
+
+    async def get_thermostats(
+        self ) -> Dict[int, Thermostat]:
+
+        return self._thermostats
+
+
+    async def get_rooms(
+        self ) -> Dict[int, Room]:
+
+        return self._rooms
+
+
+    async def get_fans(
+        self ) -> Dict[int, Fan]:
+
+        return self._fans
 
 
     async def _set_fan_mode(self, fan_id: str, fan_mode: FanMode ) -> None:
@@ -222,7 +246,7 @@ class Client:
         request_body.setdefault("json", {})
         request_body["json"]["mode"] = fan_mode.value
 
-        fan = self.fans[fan_id]
+        fan = self._fans[fan_id]
         response = await self._request(
             "PUT", 
             f"{API_FANS_URL}{fan.id}", **request_body
@@ -272,7 +296,7 @@ class Client:
         request_body.setdefault("json", {})
         request_body["json"]["power"] = fan_speed * 100
 
-        fan = self.fans[fan_id]
+        fan = self._fans[fan_id]
         response = await self._request(
             "PUT", 
             f"{API_FANS_URL}{fan.id}", **request_body

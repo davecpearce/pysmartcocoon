@@ -5,7 +5,7 @@ import aiohttp
 
 import pytest
 
-from pysmartcocoon.client import Client
+from pysmartcocoon.manager import SmartCocoonManager
 
 # Enter correct real values here for the tests to complete successfully with real SmartCocoon Server calls.
 USERNAME = "user@domain.com"
@@ -17,18 +17,18 @@ async def test_integration_fan_control() -> None:
     """Test authentification then control fan."""
 
     async with aiohttp.ClientSession() as session:
-        # Init client
-        client = Client(session=session)
+        # Init manager
+        manager = SmartCocoonManager(session=session)
 
-        if not await client.authenticate( USERNAME, PASSWORD ):
+        if not await manager.authenticate( USERNAME, PASSWORD ):
             return
 
-        await client.load_data()
+        await manager.load_data()
 
         # Test fan controls
-        await client.fan_turn_on(FAN_ID)
-        await client.fan_set_speed(FAN_ID, 50)
-        await client.fan_set_speed(FAN_ID, 100)
-        await client.fan_turn_off(FAN_ID)
+        await manager.fan_turn_on(FAN_ID)
+        await manager.fan_set_speed(FAN_ID, 50)
+        await manager.fan_set_speed(FAN_ID, 100)
+        await manager.fan_turn_off(FAN_ID)
 
 asyncio.run(test_integration_fan_control())

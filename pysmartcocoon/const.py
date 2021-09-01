@@ -27,7 +27,7 @@ class FanMode(Enum):
     ECO = 'eco'
     OFF = 'always_off'
     ON = 'always_on'
-    AUTO = 'AUTO'
+    AUTO = 'auto'
 
 class FanState(Enum):
     """Fan State."""

@@ -30,5 +30,7 @@ async def test_integration_fan_control() -> None:
         await manager.fan_set_speed(FAN_ID, 50)
         await manager.fan_set_speed(FAN_ID, 100)
         await manager.fan_turn_off(FAN_ID)
+        await manager.fan_auto(FAN_ID)
+        await manager.fan_eco(FAN_ID)
 
 asyncio.run(test_integration_fan_control())

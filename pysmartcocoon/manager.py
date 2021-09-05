@@ -11,7 +11,6 @@ import logging
 from typing import Any
 from typing import cast
 from typing import Dict
-from typing import List
 from typing import Optional
 
 from pysmartcocoon.const import API_HEADERS
@@ -56,7 +55,7 @@ class SmartCocoonManager:
         self._fans: Dict[int, Fan] = {}
 
 
-    async def authenticate(
+    async def async_authenticate(
         self,
         username: str,
         password: str
@@ -70,12 +69,12 @@ class SmartCocoonManager:
         request_body["json"]["email"] = username
         request_body["json"]["password"] = password
 
-        response = await self._request("POST", API_AUTH_URL, **request_body)
+        response = await self._async_request("POST", API_AUTH_URL, **request_body)
 
         return self._authenticated
         
 
-    async def _request(self, method: str, url: str, **kwargs) -> dict:
+    async def _async_request(self, method: str, url: str, **kwargs) -> dict:
         """Make a request using token authentication.
         Args:
             method: Method for the HTTP request (example "GET" or "POST").
@@ -126,115 +125,103 @@ class SmartCocoonManager:
 
         return cast(Dict[str, Any], data)
 
-    async def load_data(self) -> None:
+    async def async_get_data(self) -> None:
         tasks = []
-        tasks.append(self._load_locations())
-        tasks.append(self._load_thermostats())
-        tasks.append(self._load_rooms())
-        tasks.append(self._load_fans())
+        tasks.append(self.async_get_locations())
+        tasks.append(self.async_get_thermostats())
+        tasks.append(self.async_get_rooms())
+        tasks.append(self.async_get_fans())
 
         await asyncio.gather(*tasks)
 
-    async def _load_locations(
-        self ) -> Dict[int, Location]:
+    async def async_get_locations(
+        self,
+        refresh = True
+    ) -> Dict[int, Location]:
 
-        # Init locations
-        self._locations : Dict[int, Location] = {}
+        if refresh:
+            # Init locations
+            self._locations : Dict[int, Location] = {}
 
-        entity = EntityType.LOCATIONS.value
-        response = await self._request(
-            "GET", 
-            f"{API_URL}{entity}"
-        )
+            entity = EntityType.LOCATIONS.value
+            response = await self._async_request(
+                "GET", 
+                f"{API_URL}{entity}"
+            )
 
-        if len(response) != 0:
-            for item in response[entity]:
-                location = Location(data=item)
-                self._locations[location.id] = location
-
-        return self._locations
-
-
-    async def _load_thermostats(
-        self ) -> Dict[int, Thermostat]:
-
-        # Init thermostats
-        self._thermostats : Dict[int, Thermostat] = {}
-
-        entity = EntityType.THERMOSTATS.value
-        response = await self._request(
-            "GET", 
-            f"{API_URL}{entity}"
-        )
-
-        if len(response) != 0:
-            for item in response[entity]:
-                thermostat = Thermostat(data=item)
-                self._thermostats[thermostat.id] = thermostat
-
-        return self._thermostats
-
-
-    async def _load_rooms(
-        self ) -> Dict[int, Room]:
-
-        # Init rooms
-        self._rooms : Dict[int, Room] = {}
-
-        entity = EntityType.ROOMS.value
-        response = await self._request(
-            "GET", 
-            f"{API_URL}{entity}"
-        )
-
-        if len(response) != 0:
-            for item in response[entity]:
-                room = Room(data=item)
-                self._rooms[room.id] = room
-
-        return self._rooms
-
-
-    async def _load_fans(
-        self ) -> Dict[int, Fan]:
-
-        # Init fans
-        self._fans : Dict[int, Fan] = {}
-
-        entity = EntityType.FANS.value
-        response = await self._request(
-            "GET", 
-            f"{API_URL}{entity}"
-        )
-
-        if len(response) != 0:
-            for item in response[entity]:
-                fan = Fan(data=item)
-                self._fans[fan.fan_id] = fan
-
-        return self._fans
-
-
-    async def get_locations(
-        self ) -> Dict[int, Location]:
+            if len(response) != 0:
+                for item in response[entity]:
+                    location = Location(data=item)
+                    self._locations[location.id] = location
 
         return self._locations
 
 
-    async def get_thermostats(
-        self ) -> Dict[int, Thermostat]:
+    async def async_get_thermostats(
+        self,
+        refresh = True
+    ) -> Dict[int, Thermostat]:
+
+        if refresh:
+            # Init thermostats
+            self._thermostats : Dict[int, Thermostat] = {}
+
+            entity = EntityType.THERMOSTATS.value
+            response = await self._async_request(
+                "GET", 
+                f"{API_URL}{entity}"
+            )
+
+            if len(response) != 0:
+                for item in response[entity]:
+                    thermostat = Thermostat(data=item)
+                    self._thermostats[thermostat.id] = thermostat
 
         return self._thermostats
 
 
-    async def get_rooms(
-        self ) -> Dict[int, Room]:
+    async def async_get_rooms(
+        self,
+        refresh = True
+    ) -> Dict[int, Room]:
+
+        if refresh:
+            # Init rooms
+            self._rooms : Dict[int, Room] = {}
+
+            entity = EntityType.ROOMS.value
+            response = await self._async_request(
+                "GET", 
+                f"{API_URL}{entity}"
+            )
+
+            if len(response) != 0:
+                for item in response[entity]:
+                    room = Room(data=item)
+                    self._rooms[room.id] = room
 
         return self._rooms
 
 
-    async def get_fans(
-        self ) -> Dict[int, Fan]:
+    async def async_get_fans(
+        self,
+        refresh = True
+    ) -> Dict[int, Fan]:
+
+        if refresh:
+            # Init fans
+            self._fans : Dict[int, Fan] = {}
+
+            entity = EntityType.FANS.value
+            response = await self._async_request(
+                "GET", 
+                f"{API_URL}{entity}"
+            )
+
+            if len(response) != 0:
+                for item in response[entity]:
+                    fan = Fan(data=item)
+                    self._fans[fan.fan_id] = fan
 
         return self._fans
 
@@ -247,7 +234,7 @@ class SmartCocoonManager:
         request_body["json"]["mode"] = fan_mode.value
 
         fan = self._fans[fan_id]
-        response = await self._request(
+        response = await self._async_request(
             "PUT", 
             f"{API_FANS_URL}{fan.id}", **request_body
         )
@@ -278,6 +265,7 @@ class SmartCocoonManager:
 
         _LOGGER.debug("Fan %s was set to auto", fan_id)
 
+
     async def fan_eco(self, fan_id: str) -> None:
         """Enable eco mode on fan."""
         await self._set_fan_mode(fan_id, FanMode.ECO)
@@ -297,7 +285,7 @@ class SmartCocoonManager:
         request_body["json"]["power"] = fan_speed * 100
 
         fan = self._fans[fan_id]
-        response = await self._request(
+        response = await self._async_request(
             "PUT", 
             f"{API_FANS_URL}{fan.id}", **request_body
         )

@@ -245,35 +245,35 @@ class SmartCocoonManager:
             fan.fan_on = False
 
 
-    async def fan_turn_on(self, fan_id: str) -> None:
+    async def async_fan_turn_on(self, fan_id: str) -> None:
         """Turn on fan."""
         await self._set_fan_mode(fan_id, FanMode.ON)
 
         _LOGGER.debug("Fan %s was turned on", fan_id)
 
 
-    async def fan_turn_off(self, fan_id: str) -> None:
+    async def async_fan_turn_off(self, fan_id: str) -> None:
         """Turn on fan."""
         await self._set_fan_mode(fan_id, FanMode.OFF)
 
         _LOGGER.debug("Fan %s was turned off", fan_id)
 
 
-    async def fan_auto(self, fan_id: str) -> None:
+    async def async_fan_auto(self, fan_id: str) -> None:
         """Enable auto mode on fan."""
         await self._set_fan_mode(fan_id, FanMode.AUTO)
 
         _LOGGER.debug("Fan %s was set to auto", fan_id)
 
 
-    async def fan_eco(self, fan_id: str) -> None:
+    async def async_fan_eco(self, fan_id: str) -> None:
         """Enable eco mode on fan."""
         await self._set_fan_mode(fan_id, FanMode.ECO)
 
         _LOGGER.debug("Fan %s was set to eco", fan_id)
 
 
-    async def fan_set_speed(self, fan_id: str, fan_speed: int) -> None:
+    async def async_fan_set_speed(self, fan_id: str, fan_speed: int) -> None:
         """Set fan speed."""
 
         if fan_speed > 100:

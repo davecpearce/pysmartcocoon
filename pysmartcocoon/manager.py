@@ -1,5 +1,6 @@
 """Define a manager to interact with SmartCocoon"""
 import asyncio
+import paho.mqtt.client as mqtt
 
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
@@ -8,18 +9,27 @@ import async_timeout
 from datetime import datetime, timedelta
 import logging
 
-from typing import Any
-from typing import cast
-from typing import Dict
-from typing import Optional
+from typing import (
+    Any,
+    Callable,
+    cast,
+    Dict,
+    Optional,
+)
 
-from pysmartcocoon.const import API_HEADERS
-from pysmartcocoon.const import API_URL
-from pysmartcocoon.const import API_AUTH_URL
-from pysmartcocoon.const import API_FANS_URL
-from pysmartcocoon.const import DEFAULT_TIMEOUT
-from pysmartcocoon.const import FanMode
-from pysmartcocoon.const import EntityType
+from pysmartcocoon.const import (
+    API_HEADERS,
+    API_URL,
+    API_AUTH_URL,
+    API_FANS_URL,
+    DEFAULT_TIMEOUT,
+    FanMode,
+    EntityType,
+    MQTT_BROKER,
+    MQTT_CLIENT,
+    MQTT_KEEPALIVE,
+    MQTT_PORT,
+)
 
 from pysmartcocoon.errors import RequestError, SmartCocoonError
 from pysmartcocoon.errors import UnauthorizedError
@@ -30,6 +40,8 @@ from pysmartcocoon.thermostat import Thermostat
 from pysmartcocoon.room import Room
 from pysmartcocoon.fan import Fan
 
+logging.basicConfig(level=logging.DEBUG)
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
@@ -39,11 +51,13 @@ class SmartCocoonManager:
     def __init__(
         self,
         session: Optional[ClientSession] = None,
+        async_update_fan_callback: Optional[Callable[[str, Any], None]] = None,
         request_timeout: int = DEFAULT_TIMEOUT,
     ) -> None:
 
         self._session = session
         self._request_timeout = request_timeout
+        self._async_update_fan_callback = async_update_fan_callback
 
         self._headersAuth = API_HEADERS
         self._authenticated = False
@@ -53,7 +67,10 @@ class SmartCocoonManager:
         self._thermostats: Dict[int, Thermostat] = {}
         self._rooms: Dict[int, Room] = {}
         self._fans: Dict[int, Fan] = {}
-
+        self._mqttc: mqtt.Client = None
+        self._mqtt_username: str = None
+        self._mqtt_password: str = None
+        self._loop = asyncio.get_running_loop()
 
     async def async_authenticate(
         self,
@@ -92,18 +109,25 @@ class SmartCocoonManager:
 
         assert session
 
+        data = None
+
         try:
-            async with async_timeout.timeout(self._request_timeout):
-                async with session.request(method, url, ssl=False, headers=self._headersAuth, **kwargs) as response:
-                    response.raise_for_status()
-                    data = await response.json(content_type=None)
+            #async with async_timeout.timeout(self._request_timeout):
+            async with session.request(method, url, ssl=False, headers=self._headersAuth, **kwargs) as response:
+                response.raise_for_status()
+                data = await response.json(content_type=None)
         except ClientError as err:
             if "401" in str(err):
                 # Authentication failed
                 return None        
+            elif "403" in str(err):
+                # Forbidden error - likely needs to re-authenticate
+                return None        
         except asyncio.TimeoutError as err:
             _LOGGER.error("API call to SmartCocoon timed out")
             return None
+        except:
+            _LOGGER.error("API call to SmartCocoon failed")
         finally:
             if not use_running_session:
                 await session.close()
@@ -123,7 +147,11 @@ class SmartCocoonManager:
             self._user_id: str = data["data"]["id"]
             self._authenticated = True
 
-        return cast(Dict[str, Any], data)
+        if data is not None:
+            return cast(Dict[str, Any], data)
+        else:
+            _LOGGER.error("Response data is None")
+            return
 
     async def async_get_data(self) -> None:
         tasks = []
@@ -140,9 +168,6 @@ class SmartCocoonManager:
     ) -> Dict[int, Location]:
 
         if refresh:
-            # Init locations
-            self._locations : Dict[int, Location] = {}
-
             entity = EntityType.LOCATIONS.value
             response = await self._async_request(
                 "GET", 
@@ -163,9 +188,6 @@ class SmartCocoonManager:
     ) -> Dict[int, Thermostat]:
 
         if refresh:
-            # Init thermostats
-            self._thermostats : Dict[int, Thermostat] = {}
-
             entity = EntityType.THERMOSTATS.value
             response = await self._async_request(
                 "GET", 
@@ -186,9 +208,6 @@ class SmartCocoonManager:
     ) -> Dict[int, Room]:
 
         if refresh:
-            # Init rooms
-            self._rooms : Dict[int, Room] = {}
-
             entity = EntityType.ROOMS.value
             response = await self._async_request(
                 "GET", 
@@ -209,9 +228,6 @@ class SmartCocoonManager:
     ) -> Dict[int, Fan]:
 
         if refresh:
-            # Init fans
-            self._fans : Dict[int, Fan] = {}
-
             entity = EntityType.FANS.value
             response = await self._async_request(
                 "GET", 
@@ -219,11 +235,36 @@ class SmartCocoonManager:
             )
 
             if len(response) != 0:
+                if self._mqtt_username is None:
+                    self._mqtt_username = response[entity][0]["mqtt_username"]
+                    self._mqtt_password = response[entity][0]["mqtt_password"]
+
                 for item in response[entity]:
                     fan = Fan(data=item)
                     self._fans[fan.fan_id] = fan
 
         return self._fans
+
+
+    async def _async_update_fan(
+        self,
+        fan_id: str
+    ) -> Fan:
+
+        entity = EntityType.FANS.value
+        response = await self._async_request(
+            "GET",
+            f"{API_URL}{entity}/{self._fans[fan_id].id}"
+        )
+
+        if len(response) != None:
+            fan: Fan = Fan(response)
+            self._fans[fan.fan_id] = fan
+
+        if self._async_update_fan_callback:
+            await self._async_update_fan_callback(self._fans[fan.fan_id])
+
+        return self._fans[fan.fan_id]
 
 
     async def _set_fan_mode(self, fan_id: str, fan_mode: FanMode ) -> None:
@@ -290,4 +331,45 @@ class SmartCocoonManager:
             f"{API_FANS_URL}{fan.id}", **request_body
         )
 
-        _LOGGER.debug("Fan %s speed was set to %s%", fan_id, fan_speed)
+        _LOGGER.debug("Fan %s speed was set to %d percent", fan_id, fan_speed)
+
+
+    def _mqtt_on_connect(self, _mqttc, userdata, flags, rc: int):
+        if rc == 0:
+            _LOGGER.debug("MQTT connection successful")
+        else:
+            _LOGGER.debug("MQTT connection failed %i", rc)
+
+
+    def _mqtt_on_message_status(self, _mqttc, userdata, message):
+        _LOGGER.debug("MQTT message received: %s", message.payload)
+
+        # Format of topic should be "nnnn_fan_id/status"
+        # Where nnnn = location_id
+
+        topic_l1 = message.topic.split("/")[0]
+        fan_id = topic_l1.split("_")[1]
+
+        asyncio.run_coroutine_threadsafe(self._async_update_fan(fan_id),self._loop)
+
+
+    async def async_start_mqtt(self) -> bool:
+        """Start MQTT subscriptions."""
+
+        self._mqttc = mqtt.Client(MQTT_CLIENT, protocol=mqtt.MQTTv311)
+        self._mqttc.username_pw_set(self._mqtt_username, password=self._mqtt_password)
+        self._mqttc.on_connect = self._mqtt_on_connect
+        self._mqttc.connect(MQTT_BROKER, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
+
+        for fan in self._fans:
+            self._mqttc.message_callback_add(f"{self._mqtt_username}/status",self._mqtt_on_message_status)
+        self._mqttc.subscribe(f"{self._mqtt_username}/#")
+
+        self._mqttc.loop_start()
+
+
+    async def async_stop_mqtt(self) -> bool:
+        """Stop MQTT subscriptions."""
+
+        self._mqttc.disconnect()
+        self._mqttc.loop_stop()

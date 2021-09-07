@@ -1,0 +1,1 @@
+"""SmartCocoon API REST Client."""

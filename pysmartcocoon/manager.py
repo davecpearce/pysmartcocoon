@@ -72,6 +72,31 @@ class SmartCocoonManager:
         self._mqtt_password: str = None
         self._loop = asyncio.get_running_loop()
 
+
+    @property
+    def locations(self):
+        """Return list of Locations."""
+        return self._locations
+
+
+    @property
+    def thermostate(self):
+        """Return list of Thermostats."""
+        return self._thermostats
+
+
+    @property
+    def rooms(self):
+        """Return list of Rooms."""
+        return self._rooms
+
+
+    @property
+    def fans(self):
+        """Return list of Fans."""
+        return self._fans
+
+
     async def async_authenticate(
         self,
         username: str,
@@ -153,95 +178,87 @@ class SmartCocoonManager:
             _LOGGER.error("Response data is None")
             return
 
-    async def async_get_data(self) -> None:
+    async def async_update_data(self) -> None:
         tasks = []
-        tasks.append(self.async_get_locations())
-        tasks.append(self.async_get_thermostats())
-        tasks.append(self.async_get_rooms())
-        tasks.append(self.async_get_fans())
+        tasks.append(self.async_update_locations())
+        tasks.append(self.async_update_thermostats())
+        tasks.append(self.async_update_rooms())
+        tasks.append(self.async_update_fans())
 
         await asyncio.gather(*tasks)
 
-    async def async_get_locations(
-        self,
-        refresh = True
+    async def async_update_locations(
+        self
     ) -> Dict[int, Location]:
 
-        if refresh:
-            entity = EntityType.LOCATIONS.value
-            response = await self._async_request(
-                "GET", 
-                f"{API_URL}{entity}"
-            )
+        entity = EntityType.LOCATIONS.value
+        response = await self._async_request(
+            "GET", 
+            f"{API_URL}{entity}"
+        )
 
-            if len(response) != 0:
-                for item in response[entity]:
-                    location = Location(data=item)
-                    self._locations[location.id] = location
+        if len(response) != 0:
+            for item in response[entity]:
+                location = Location(data=item)
+                self._locations[location.id] = location
 
         return self._locations
 
 
-    async def async_get_thermostats(
-        self,
-        refresh = True
+    async def async_update_thermostats(
+        self
     ) -> Dict[int, Thermostat]:
 
-        if refresh:
-            entity = EntityType.THERMOSTATS.value
-            response = await self._async_request(
-                "GET", 
-                f"{API_URL}{entity}"
-            )
+        entity = EntityType.THERMOSTATS.value
+        response = await self._async_request(
+            "GET", 
+            f"{API_URL}{entity}"
+        )
 
-            if len(response) != 0:
-                for item in response[entity]:
-                    thermostat = Thermostat(data=item)
-                    self._thermostats[thermostat.id] = thermostat
+        if len(response) != 0:
+            for item in response[entity]:
+                thermostat = Thermostat(data=item)
+                self._thermostats[thermostat.id] = thermostat
 
         return self._thermostats
 
 
-    async def async_get_rooms(
-        self,
-        refresh = True
+    async def async_update_rooms(
+        self
     ) -> Dict[int, Room]:
 
-        if refresh:
-            entity = EntityType.ROOMS.value
-            response = await self._async_request(
-                "GET", 
-                f"{API_URL}{entity}"
-            )
+        entity = EntityType.ROOMS.value
+        response = await self._async_request(
+            "GET", 
+            f"{API_URL}{entity}"
+        )
 
-            if len(response) != 0:
-                for item in response[entity]:
-                    room = Room(data=item)
-                    self._rooms[room.id] = room
+        if len(response) != 0:
+            for item in response[entity]:
+                room = Room(data=item)
+                self._rooms[room.id] = room
 
         return self._rooms
 
 
-    async def async_get_fans(
-        self,
-        refresh = True
+    async def async_update_fans(
+        self
     ) -> Dict[int, Fan]:
 
-        if refresh:
-            entity = EntityType.FANS.value
-            response = await self._async_request(
-                "GET", 
-                f"{API_URL}{entity}"
-            )
+        entity = EntityType.FANS.value
+        response = await self._async_request(
+            "GET", 
+            f"{API_URL}{entity}"
+        )
 
-            if len(response) != 0:
-                if self._mqtt_username is None:
-                    self._mqtt_username = response[entity][0]["mqtt_username"]
-                    self._mqtt_password = response[entity][0]["mqtt_password"]
+        if len(response) != 0:
+            if self._mqtt_username is None:
+                self._mqtt_username = response[entity][0]["mqtt_username"]
+                self._mqtt_password = response[entity][0]["mqtt_password"]
 
-                for item in response[entity]:
-                    fan = Fan(data=item)
-                    self._fans[fan.fan_id] = fan
+            for item in response[entity]:
+                fan = Fan(data=item)
+                self._fans[fan.fan_id] = fan
 
         return self._fans
 

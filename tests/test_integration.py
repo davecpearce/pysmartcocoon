@@ -37,11 +37,11 @@ async def test_integration_fan_control() -> None:
         if not await manager.async_authenticate( USERNAME, PASSWORD ):
             return
 
-        await manager.async_get_data()
+        await manager.async_update_data()
 
         await manager.async_start_mqtt()
 
-        await manager.async_get_fans()
+        await manager.async_update_fans()
 
         # Test fan controls
         WAIT_FOR = 5

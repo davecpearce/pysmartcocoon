@@ -15,6 +15,10 @@ USERNAME = "user@domain.com"
 PASSWORD = "password"
 FAN_ID = "1abc23"  # This is the physical fan ID printed from the fan
 
+USERNAME = "dpmn.home@gmail.com"
+PASSWORD = "JOY-refer-percept"
+FAN_ID = "6fcf50"  # This is the physical fan ID printed on the fan
+
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @pytest.mark.skip("Not an automated test but an example of usage with real values.")
@@ -35,12 +39,11 @@ async def test_integration_fan_control() -> None:
         )
 
         if not await manager.async_authenticate( USERNAME, PASSWORD ):
+            _LOGGER.debug("Authentication failed")
             return
 
         await manager.async_update_data()
-
         await manager.async_start_mqtt()
-
         await manager.async_update_fans()
 
         # Test fan controls

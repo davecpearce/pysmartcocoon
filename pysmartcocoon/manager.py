@@ -1,6 +1,8 @@
 """Define a manager to interact with SmartCocoon"""
 import asyncio
 import paho.mqtt.client as mqtt
+import uuid
+import traceback
 
 from aiohttp import ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientError
@@ -136,9 +138,12 @@ class SmartCocoonManager:
 
         data = None
 
+        _LOGGER.debug("Calling SmartCocoon API - method: %s, url: %s", method, url)
+
         try:
-            #async with async_timeout.timeout(self._request_timeout):
-            async with session.request(method, url, ssl=False, headers=self._headersAuth, **kwargs) as response:
+            async with async_timeout.timeout(self._request_timeout):
+                response = await session.request(method, url, ssl=False, headers=self._headersAuth, **kwargs)
+                _LOGGER.debug("SmartCocoon API response status: %s", response.status)
                 response.raise_for_status()
                 data = await response.json(content_type=None)
         except ClientError as err:
@@ -151,8 +156,10 @@ class SmartCocoonManager:
         except asyncio.TimeoutError as err:
             _LOGGER.error("API call to SmartCocoon timed out")
             return None
-        except:
-            _LOGGER.error("API call to SmartCocoon failed")
+        except Exception as err:
+            _LOGGER.error("API call to SmartCocoon failed with expected error")
+            _LOGGER.error(traceback.format_exc())
+            return None
         finally:
             if not use_running_session:
                 await session.close()
@@ -276,10 +283,17 @@ class SmartCocoonManager:
 
         if len(response) != None:
             fan: Fan = Fan(response)
+
+            # fan_on is not always updated in time by SmartCocoon, override based on current mode
+            if fan.mode == FanMode.ON.value:
+                fan.fan_on = True
+            if fan.mode == FanMode.OFF.value:
+                fan.fan_on = False
+
             self._fans[fan.fan_id] = fan
 
-        if self._async_update_fan_callback:
-            await self._async_update_fan_callback(self._fans[fan.fan_id])
+            if self._async_update_fan_callback:
+                await self._async_update_fan_callback(self._fans[fan.fan_id])
 
         return self._fans[fan.fan_id]
 
@@ -373,17 +387,19 @@ class SmartCocoonManager:
     async def async_start_mqtt(self) -> bool:
         """Start MQTT subscriptions."""
 
-        self._mqttc = mqtt.Client(MQTT_CLIENT, protocol=mqtt.MQTTv311)
+        client_id = mqtt.base62(uuid.uuid4().int, padding=22)
+        self._mqttc = mqtt.Client(client_id, protocol=mqtt.MQTTv311)
         self._mqttc.username_pw_set(self._mqtt_username, password=self._mqtt_password)
-        self._mqttc.on_connect = self._mqtt_on_connect
+        #self._mqttc.on_connect = self._mqtt_on_connect
         self._mqttc.connect(MQTT_BROKER, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
 
         for fan in self._fans:
             self._mqttc.message_callback_add(f"{self._mqtt_username}/status",self._mqtt_on_message_status)
+
         self._mqttc.subscribe(f"{self._mqtt_username}/#")
 
         self._mqttc.loop_start()
-
+        return True
 
     async def async_stop_mqtt(self) -> bool:
         """Stop MQTT subscriptions."""

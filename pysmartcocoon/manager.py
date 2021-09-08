@@ -80,7 +80,7 @@ class SmartCocoonManager:
 
 
     @property
-    def thermostate(self):
+    def thermostats(self):
         """Return list of Thermostats."""
         return self._thermostats
 

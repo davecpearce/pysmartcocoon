@@ -255,9 +255,9 @@ class Fan:
         # fan_on does not always reflect the current mode, mode is more accurate
         # if set to always_on or always_off
 
-        if self._mode is FanMode.ON.value:
+        if self._mode == FanMode.ON.value:
             self._fan_on = True
-        elif self._mode is FanMode.OFF.value:
+        elif self._mode == FanMode.OFF.value:
             self._fan_on = False
         else:
             self._fan_on: bool = data["fan_on"]
@@ -298,7 +298,9 @@ class Fan:
             await self.async_update_api_data(response)
 
             if self._async_update_fan_callback:
-                await self._async_update_fan_callback(self)
+                _LOGGER.debug("Fan ID: %s - Executing callback for fan update", self.fan_id)
+                await self._async_update_fan_callback()
+                _LOGGER.debug("Fan ID: %s - Completed callback for fan update", self.fan_id)
 
 
         return True

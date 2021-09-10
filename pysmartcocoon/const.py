@@ -1,4 +1,4 @@
-# Smart Cocoon constants
+# SmartCocoon constants
 
 from enum import Enum
 

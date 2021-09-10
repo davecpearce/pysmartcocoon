@@ -13,36 +13,28 @@ import logging
 
 from typing import (
     Any,
-    Callable,
     cast,
     Dict,
     Optional,
 )
 
 from pysmartcocoon.const import (
-    API_HEADERS,
     API_URL,
-    API_AUTH_URL,
     API_FANS_URL,
     DEFAULT_TIMEOUT,
     FanMode,
     EntityType,
-    MQTT_BROKER,
-    MQTT_CLIENT,
-    MQTT_KEEPALIVE,
-    MQTT_PORT,
 )
 
 from pysmartcocoon.errors import RequestError, SmartCocoonError
 from pysmartcocoon.errors import UnauthorizedError
 from pysmartcocoon.errors import TokenExpiredError
 
+from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.location import Location
 from pysmartcocoon.thermostat import Thermostat
 from pysmartcocoon.room import Room
 from pysmartcocoon.fan import Fan
-
-logging.basicConfig(level=logging.DEBUG)
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -53,26 +45,21 @@ class SmartCocoonManager:
     def __init__(
         self,
         session: Optional[ClientSession] = None,
-        async_update_fan_callback: Optional[Callable[[str, Any], None]] = None,
         request_timeout: int = DEFAULT_TIMEOUT,
     ) -> None:
 
-        self._session = session
-        self._request_timeout = request_timeout
-        self._async_update_fan_callback = async_update_fan_callback
+        self._api = SmartCocoonAPI(
+            session,
+            request_timeout
+        )
 
-        self._headersAuth = API_HEADERS
-        self._authenticated = False
+        self._api_connected: bool = False
 
         """Variables to store SmartCocoon response data"""
         self._locations: Dict[int, Location] = {}
         self._thermostats: Dict[int, Thermostat] = {}
         self._rooms: Dict[int, Room] = {}
         self._fans: Dict[int, Fan] = {}
-        self._mqttc: mqtt.Client = None
-        self._mqtt_username: str = None
-        self._mqtt_password: str = None
-        self._loop = asyncio.get_running_loop()
 
 
     @property
@@ -99,107 +86,63 @@ class SmartCocoonManager:
         return self._fans
 
 
-    async def async_authenticate(
+    async def async_start_services(
         self,
         username: str,
         password: str
     ) -> bool:
+    
+        _LOGGER.debug("Starting services")
 
-        self._authenticated = False
+        # Authenticate with the API
+        self._api_connected = await self._api.async_authenticate( username, password )
 
-        # Authenticate with user and pass
-        request_body = {}
-        request_body.setdefault("json", {})
-        request_body["json"]["email"] = username
-        request_body["json"]["password"] = password
+        if self._api_connected:
+            # Make API calls to initial data
+            await self.async_update_data()
 
-        response = await self._async_request("POST", API_AUTH_URL, **request_body)
+        # Start Fan services
+        _LOGGER.debug("Starting fan services")
+        for fan_id in self._fans:
+            await self._fans[fan_id].async_start_services()
 
-        return self._authenticated
-        
+        return self._api_connected
 
-    async def _async_request(self, method: str, url: str, **kwargs) -> dict:
-        """Make a request using token authentication.
-        Args:
-            method: Method for the HTTP request (example "GET" or "POST").
-            path: path of the REST API endpoint.
-        Returns:
-            the Response object corresponding to the result of the API request.
-        """
 
-        use_running_session = self._session and not self._session.closed
+    async def async_stop_services(
+        self
+    ) -> bool:
+    
+        _LOGGER.debug("Stopping services")
 
-        if use_running_session:
-            session = self._session
-        else:
-            session = ClientSession(timeout=ClientTimeout(total=DEFAULT_TIMEOUT))
+        # Close the MQTT sessions managed by the fans
 
-        assert session
+        for fan_id in self._fans:
+            _LOGGER.debug("Stopping services for fan: %s", fan_id)
+            await self._fans[fan_id].async_stop_services()
 
-        data = None
+        return True
 
-        _LOGGER.debug("Calling SmartCocoon API - method: %s, url: %s", method, url)
-
-        try:
-            async with async_timeout.timeout(self._request_timeout):
-                response = await session.request(method, url, ssl=False, headers=self._headersAuth, **kwargs)
-                _LOGGER.debug("SmartCocoon API response status: %s", response.status)
-                response.raise_for_status()
-                data = await response.json(content_type=None)
-        except ClientError as err:
-            if "401" in str(err):
-                # Authentication failed
-                return None        
-            elif "403" in str(err):
-                # Forbidden error - likely needs to re-authenticate
-                return None        
-        except asyncio.TimeoutError as err:
-            _LOGGER.error("API call to SmartCocoon timed out")
-            return None
-        except Exception as err:
-            _LOGGER.error("API call to SmartCocoon failed with expected error")
-            _LOGGER.error(traceback.format_exc())
-            return None
-        finally:
-            if not use_running_session:
-                await session.close()
-
-        # If this request is for authorization, save auth data
-        if url == API_AUTH_URL:
-            self._bearerToken: str = response.headers["access-token"]
-            self._bearerTokenExpiration: datetime = datetime.now() + timedelta(
-                seconds=int(response.headers["expiry"]) - 10
-                )
-            self._apiClient: str = response.headers["client"]
-
-            self._headersAuth["access-token"] = self._bearerToken
-            self._headersAuth["client"] = self._apiClient
-            self._headersAuth["uid"] = data["data"]["email"]
-
-            self._user_id: str = data["data"]["id"]
-            self._authenticated = True
-
-        if data is not None:
-            return cast(Dict[str, Any], data)
-        else:
-            _LOGGER.error("Response data is None")
-            return
 
     async def async_update_data(self) -> None:
         tasks = []
         tasks.append(self.async_update_locations())
         tasks.append(self.async_update_thermostats())
         tasks.append(self.async_update_rooms())
-        tasks.append(self.async_update_fans())
-
         await asyncio.gather(*tasks)
+
+        """Fans requires rooms to be loaded in order to add the 
+           room_name to the fan
+        """           
+        await self.async_update_fans()
+
 
     async def async_update_locations(
         self
     ) -> Dict[int, Location]:
 
         entity = EntityType.LOCATIONS.value
-        response = await self._async_request(
+        response = await self._api.async_request(
             "GET", 
             f"{API_URL}{entity}"
         )
@@ -217,7 +160,7 @@ class SmartCocoonManager:
     ) -> Dict[int, Thermostat]:
 
         entity = EntityType.THERMOSTATS.value
-        response = await self._async_request(
+        response = await self._api.async_request(
             "GET", 
             f"{API_URL}{entity}"
         )
@@ -235,7 +178,7 @@ class SmartCocoonManager:
     ) -> Dict[int, Room]:
 
         entity = EntityType.ROOMS.value
-        response = await self._async_request(
+        response = await self._api.async_request(
             "GET", 
             f"{API_URL}{entity}"
         )
@@ -253,156 +196,69 @@ class SmartCocoonManager:
     ) -> Dict[int, Fan]:
 
         entity = EntityType.FANS.value
-        response = await self._async_request(
+        response = await self._api.async_request(
             "GET", 
             f"{API_URL}{entity}"
         )
 
         if len(response) != 0:
-            if self._mqtt_username is None:
-                self._mqtt_username = response[entity][0]["mqtt_username"]
-                self._mqtt_password = response[entity][0]["mqtt_password"]
+            for data in response[entity]:
+                # Check to see if Fan exists in _fans
+                fan_id = data["fan_id"]
 
-            for item in response[entity]:
-                fan = Fan(data=item)
-                self._fans[fan.fan_id] = fan
+                if fan_id not in self._fans:
+                    fan = Fan(fan_id=fan_id, api=self._api)
+                    self._fans[fan_id] = fan
+
+                await self._fans[fan_id].async_update_api_data( data )
+                room_name = await self.async_get_room_name(self._fans[fan_id].room_id)
+                self._fans[fan_id].update_room_name(room_name)
 
         return self._fans
 
 
-    async def _async_update_fan(
+    async def async_get_room_name(
         self,
-        fan_id: str
-    ) -> Fan:
+        room_id: int
+    ) -> str:
 
-        entity = EntityType.FANS.value
-        response = await self._async_request(
-            "GET",
-            f"{API_URL}{entity}/{self._fans[fan_id].id}"
-        )
+        if room_id in self._rooms:
+            room_name = self.rooms[room_id].name
 
-        if len(response) != None:
-            fan: Fan = Fan(response)
+            _LOGGER.debug("In async_get_room_name for room_id: %s, found room nane: %s",
+                room_id,
+                room_name
+            )
+        else:
+            room_name = None
+            _LOGGER.debug("In async_get_room_name, room_id: %s was not nout",
+                room_id
+            )
 
-            # fan_on is not always updated in time by SmartCocoon, override based on current mode
-            if fan.mode == FanMode.ON.value:
-                fan.fan_on = True
-            if fan.mode == FanMode.OFF.value:
-                fan.fan_on = False
-
-            self._fans[fan.fan_id] = fan
-
-            if self._async_update_fan_callback:
-                await self._async_update_fan_callback(self._fans[fan.fan_id])
-
-        return self._fans[fan.fan_id]
-
-
-    async def _set_fan_mode(self, fan_id: str, fan_mode: FanMode ) -> None:
-        """Set the fan mode."""
-
-        request_body = {}
-        request_body.setdefault("json", {})
-        request_body["json"]["mode"] = fan_mode.value
-
-        fan = self._fans[fan_id]
-        response = await self._async_request(
-            "PUT", 
-            f"{API_FANS_URL}{fan.id}", **request_body
-        )
-
-        if fan_mode == FanMode.ON:
-            fan.fan_on = True
-        elif fan_mode == FanMode.OFF:
-            fan.fan_on = False
+        return room_name
 
 
     async def async_fan_turn_on(self, fan_id: str) -> None:
         """Turn on fan."""
-        await self._set_fan_mode(fan_id, FanMode.ON)
-
-        _LOGGER.debug("Fan %s was turned on", fan_id)
+        await self._fans[fan_id].async_set_fan_mode(FanMode.ON)
 
 
     async def async_fan_turn_off(self, fan_id: str) -> None:
         """Turn on fan."""
-        await self._set_fan_mode(fan_id, FanMode.OFF)
-
-        _LOGGER.debug("Fan %s was turned off", fan_id)
+        await self._fans[fan_id].async_set_fan_mode(FanMode.OFF)
 
 
     async def async_fan_auto(self, fan_id: str) -> None:
         """Enable auto mode on fan."""
-        await self._set_fan_mode(fan_id, FanMode.AUTO)
-
-        _LOGGER.debug("Fan %s was set to auto", fan_id)
+        await self._fans[fan_id].async_set_fan_mode(FanMode.AUTO)
 
 
     async def async_fan_eco(self, fan_id: str) -> None:
         """Enable eco mode on fan."""
-        await self._set_fan_mode(fan_id, FanMode.ECO)
-
-        _LOGGER.debug("Fan %s was set to eco", fan_id)
+        await self._fans[fan_id].async_set_fan_mode(FanMode.ECO)
 
 
     async def async_fan_set_speed(self, fan_id: str, fan_speed: int) -> None:
         """Set fan speed."""
 
-        if fan_speed > 100:
-            _LOGGER.debug("Fan speed of %s is invalid, must be between 0 and 100", fan_speed)
-            return
-
-        request_body = {}
-        request_body.setdefault("json", {})
-        request_body["json"]["power"] = fan_speed * 100
-
-        fan = self._fans[fan_id]
-        response = await self._async_request(
-            "PUT", 
-            f"{API_FANS_URL}{fan.id}", **request_body
-        )
-
-        _LOGGER.debug("Fan %s speed was set to %d percent", fan_id, fan_speed)
-
-
-    def _mqtt_on_connect(self, _mqttc, userdata, flags, rc: int):
-        if rc == 0:
-            _LOGGER.debug("MQTT connection successful")
-        else:
-            _LOGGER.debug("MQTT connection failed %i", rc)
-
-
-    def _mqtt_on_message_status(self, _mqttc, userdata, message):
-        _LOGGER.debug("MQTT message received: %s", message.payload)
-
-        # Format of topic should be "nnnn_fan_id/status"
-        # Where nnnn = location_id
-
-        topic_l1 = message.topic.split("/")[0]
-        fan_id = topic_l1.split("_")[1]
-
-        asyncio.run_coroutine_threadsafe(self._async_update_fan(fan_id),self._loop)
-
-
-    async def async_start_mqtt(self) -> bool:
-        """Start MQTT subscriptions."""
-
-        client_id = mqtt.base62(uuid.uuid4().int, padding=22)
-        self._mqttc = mqtt.Client(client_id, protocol=mqtt.MQTTv311)
-        self._mqttc.username_pw_set(self._mqtt_username, password=self._mqtt_password)
-        #self._mqttc.on_connect = self._mqtt_on_connect
-        self._mqttc.connect(MQTT_BROKER, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
-
-        for fan in self._fans:
-            self._mqttc.message_callback_add(f"{self._mqtt_username}/status",self._mqtt_on_message_status)
-
-        self._mqttc.subscribe(f"{self._mqtt_username}/#")
-
-        self._mqttc.loop_start()
-        return True
-
-    async def async_stop_mqtt(self) -> bool:
-        """Stop MQTT subscriptions."""
-
-        self._mqttc.disconnect()
-        self._mqttc.loop_stop()
+        await self._fans[fan_id].async_fan_set_speed(fan_speed)

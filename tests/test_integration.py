@@ -15,10 +15,7 @@ USERNAME = "user@domain.com"
 PASSWORD = "password"
 FAN_ID = "1abc23"  # This is the physical fan ID printed from the fan
 
-USERNAME = "dpmn.home@gmail.com"
-PASSWORD = "JOY-refer-percept"
-FAN_ID = "6fcf50"  # This is the physical fan ID printed on the fan
-
+logging.basicConfig(level=logging.DEBUG)
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 @pytest.mark.skip("Not an automated test but an example of usage with real values.")
@@ -34,17 +31,12 @@ async def test_integration_fan_control() -> None:
     async with aiohttp.ClientSession() as session:
         # Init manager
         manager = SmartCocoonManager(
-            session=session,
-            async_update_fan_callback=async_fan_update_callback
+            session=session
         )
 
-        if not await manager.async_authenticate( USERNAME, PASSWORD ):
+        if not await manager.async_start_services( USERNAME, PASSWORD ):
             _LOGGER.debug("Authentication failed")
             return
-
-        await manager.async_update_data()
-        await manager.async_start_mqtt()
-        await manager.async_update_fans()
 
         # Test fan controls
         WAIT_FOR = 5
@@ -61,7 +53,7 @@ async def test_integration_fan_control() -> None:
         time.sleep(WAIT_FOR)
         await manager.async_fan_turn_off(FAN_ID)
         time.sleep(WAIT_FOR)
-
-        await manager.async_stop_mqtt()
+        
+        await manager.async_stop_services()
 
 asyncio.run(test_integration_fan_control())

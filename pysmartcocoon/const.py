@@ -13,7 +13,6 @@ API_HEADERS = {
 
 #MQTT Data
 MQTT_BROKER = "nlb-production-04b5ef4727e9be7d.elb.us-east-2.amazonaws.com"
-MQTT_CLIENT = "pysmartcocoon"
 MQTT_PORT = 1883
 MQTT_KEEPALIVE = 600
 

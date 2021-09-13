@@ -212,7 +212,7 @@ class SmartCocoonManager:
 
                 await self._fans[fan_id].async_update_api_data( data )
                 room_name = await self.async_get_room_name(self._fans[fan_id].room_id)
-                self._fans[fan_id].update_room_name(room_name)
+                self._fans[fan_id].set_room_name(room_name)
 
         return self._fans
 
@@ -240,25 +240,35 @@ class SmartCocoonManager:
 
     async def async_fan_turn_on(self, fan_id: str) -> None:
         """Turn on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.ON)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ON)
 
 
     async def async_fan_turn_off(self, fan_id: str) -> None:
         """Turn on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.OFF)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.OFF)
 
 
-    async def async_fan_auto(self, fan_id: str) -> None:
+    async def async_set_fan_auto(self, fan_id: str) -> None:
         """Enable auto mode on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.AUTO)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.AUTO)
 
 
-    async def async_fan_eco(self, fan_id: str) -> None:
+    async def async_set_fan_eco(self, fan_id: str) -> None:
         """Enable eco mode on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.ECO)
+        
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ECO)
 
 
-    async def async_fan_set_speed(self, fan_id: str, fan_speed: int) -> None:
+    async def async_set_fan_modes(self, fan_id: str, fan_mode: FanMode, fan_speed_pct: int) -> None:
+        """Set fan mode and speed."""
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode = fan_mode, fan_speed_pct=fan_speed_pct)
+
+
+    async def async_set_fan_speed(self, fan_id: str, fan_speed_pct: int) -> None:
         """Set fan speed."""
 
-        await self._fans[fan_id].async_fan_set_speed(fan_speed)
+        await self._fans[fan_id].async_set_fan_modes(fan_speed_pct=fan_speed_pct)

@@ -9,7 +9,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name='pysmartcocoon',
-    version='0.5.1', # Should be updated with new versions
+    version='0.5.2', # Should be updated with new versions
     author='Dave Pearce',
     author_email='pearcd2@yahoo.com',
     packages=['pysmartcocoon'],

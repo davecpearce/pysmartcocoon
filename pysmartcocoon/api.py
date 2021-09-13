@@ -101,13 +101,16 @@ class SmartCocoonAPI:
                 _LOGGER.debug("SmartCocoon API response status: %s", response.status)
                 response.raise_for_status()
                 data = await response.json(content_type=None)
-            _LOGGER.debug("cm.expired = %s", cm.expired)
         except ClientError as err:
             if "401" in str(err):
                 # Authentication failed
                 return None        
             elif "403" in str(err):
                 # Forbidden error - likely needs to re-authenticate
+                return None        
+            elif "Server disconnected" in str(err):
+                # Server disconnected error
+                _LOGGER.error("SmartCocoon API response error: %s", err.message)
                 return None        
         except asyncio.TimeoutError as err:
             _LOGGER.error("API call to SmartCocoon timed out")

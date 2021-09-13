@@ -19,6 +19,7 @@ import uuid
 from pysmartcocoon.const import (
     API_FANS_URL,
     API_URL,
+    DEFAULT_FAN_POWER_PCT,
     EntityType,
     FanMode,
     MQTT_BROKER,
@@ -136,12 +137,26 @@ class Fan:
 
 
     @property
+    def mode_enum(self) -> FanMode: 
+        """Return the current mode setting of the fan """
+        return FanMode(self._mode)
+
+
+    @property
     def power(self) -> int: 
         """Return the current power setting of the fan 
            % value is multiplied by 100 
            100% = power level of 10000
         """
         return self._power
+
+
+    @property
+    def speed_pct(self) -> int: 
+        """Return the current power setting of the fan 
+           by % 
+        """
+        return self._power / 100
 
 
     @property
@@ -156,7 +171,25 @@ class Fan:
         return self._room_name
 
 
-    def update_room_name(self, room_name:str ) -> bool: 
+    def set_speed_pct(self, fan_speed_pct:int ) -> bool: 
+        """Update the power of the fan """
+
+        if fan_speed_pct > 100:
+            _LOGGER.debug("Fan ID: %s - Fan speed of %s%% is invalid, must be between 0%% and 100%%", 
+                self.fan_id,
+                str(fan_speed_pct)
+        )
+
+        _LOGGER.debug("Fan ID: %s - Updating fan speed to %s%%", 
+            self.fan_id,
+            str(fan_speed_pct)
+        )
+
+        self._power = fan_speed_pct * 100
+        return True
+
+
+    def set_room_name(self, room_name:str ) -> bool: 
         """Update the room_name """
 
         _LOGGER.debug("Fan ID: %s - Updating room_name to '%s'", 
@@ -175,7 +208,7 @@ class Fan:
 
 
     @property
-    def thermostat_vemdor(self) -> str: 
+    def thermostat_vendor(self) -> str: 
         """Return the thermostat vendor of the fan """
         return self._thermostat_vendor
 
@@ -192,50 +225,76 @@ class Fan:
         return self._mqtt_password
 
 
-    async def async_set_fan_mode(self, fan_mode: FanMode ) -> None:
-        """Set the fan mode."""
+    async def async_set_fan_modes(self, fan_mode: FanMode = None, fan_speed_pct: int = None ) -> bool:
+        """Set the fan mode and speed."""
+
+        _LOGGER.debug("Fan ID: %s - In async_set_fan_mode with fan_mode: %s and fan_speed: %s%%", 
+            self.fan_id,
+            fan_mode,
+            str(fan_speed_pct)
+        )
+
+        if fan_mode == None and fan_speed_pct == None:
+            _LOGGER.debug("async_set_fan_modes must provide a value for fan_mode and/or fan_speed")
+            return False
+
+        if fan_mode == None:
+            # Determine value for fan_mode
+            if fan_speed_pct == 0:
+                if self.mode_enum is FanMode.ON:
+                    fan_mode = FanMode.OFF
+                else:
+                    fan_mode = self.mode_enum
+            else:
+                if self.mode_enum is FanMode.OFF:
+                    fan_mode = FanMode.ON
+                else:
+                    fan_mode = self.mode_enum
+
+        # Update fan mode if changed
+        if self.mode_enum != fan_mode:
+            self._mode = fan_mode.value
+
+        if fan_speed_pct == None:
+            if fan_mode is FanMode.OFF:
+                fan_speed_pct = self.speed_pct
+            elif fan_mode is FanMode.ON and self.speed_pct == 0:
+                fan_speed_pct = DEFAULT_FAN_POWER_PCT
+            else:
+                fan_speed_pct = self.speed_pct
+        else:
+            if fan_speed_pct > 100:
+                _LOGGER.debug("Fan ID: %s - Fan speed of %s%% is invalid, must be between 0%% and 100%%", 
+                    self.fan_id,
+                    str(fan_speed_pct)
+                )
+                return False
+
+        # Update power if changed
+        if self.speed_pct != fan_speed_pct:
+            self.set_speed_pct(fan_speed_pct)
 
         request_body = {}
         request_body.setdefault("json", {})
-        request_body["json"]["mode"] = fan_mode.value
+        request_body["json"]["mode"] = self.mode
+        request_body["json"]["power"] = self.power
 
         response = await self._api.async_request(
             "PUT", 
             f"{API_FANS_URL}{self.id}", **request_body
         )
 
-        _LOGGER.debug("Fan ID: %s - Fan Mode was set to %s", 
+        _LOGGER.debug("Fan ID: %s - Fan Mode was set to %s, speed to %s", 
             self.fan_id, 
-            fan_mode.value)
+            self.mode,
+            self.speed_pct)
 
-        if fan_mode == FanMode.ON and not self.fan_on:
+        if fan_mode == FanMode.ON.value and not self.fan_on:
             _LOGGER.debug("Fan ID: %s - Changing fan_on to 'True'", self.fan_id)
             self._fan_on = True
-        elif fan_mode == FanMode.OFF:
+        elif fan_mode == FanMode.OFF.value:
             _LOGGER.debug("Fan ID: %s - Changing fan_on to 'False'", self.fan_id)
             self._fan_on = False
-
-
-    async def async_fan_set_speed(self, fan_speed: int) -> None:
-        """Set fan speed."""
-
-        if fan_speed > 100:
-            _LOGGER.debug("Fan ID: %s - Fan speed of %s is invalid, must be between 0 and 100", 
-                self.fan_id,
-                fan_speed
-            )
-            return
-
-        request_body = {}
-        request_body.setdefault("json", {})
-        request_body["json"]["power"] = fan_speed * 100
-
-        response = await self._api.async_request(
-            "PUT", 
-            f"{API_FANS_URL}{self.id}", **request_body
-        )
-
-        _LOGGER.debug("Fan ID: %s - Speed was set to %d percent", self.fan_id, fan_speed)
 
 
     async def async_update_api_data(
@@ -319,13 +378,15 @@ class Fan:
         if rc == 0:
             _LOGGER.debug("Fan ID: %s - MQTT has been successfully disconnected", self.fan_id)
         else:
-            _LOGGER.debug("Fan ID: %s - MQTT unexpected disconnected: %i", self.fan_id, rc)
+            _LOGGER.debug("Fan ID: %s - MQTT unexpected disconnect: %i", self.fan_id, rc)
+            asyncio.run_coroutine_threadsafe(self._async_start_mqtt(), self._loop)
 
         self._mqtt_connected = False
 
 
-    def _mqtt_on_message_status(self, _mqttc, userdata, message):
-        _LOGGER.debug("Fan ID: %s - MQTT message received: %s", self.fan_id, message.payload)
+    def _mqtt_on_message_status(self, _mqttc, userdata, message: mqtt.MQTTMessage):
+        payload = str(message.payload)
+        _LOGGER.debug("Fan ID: %s - MQTT message received: %s", self.fan_id, payload)
 
         # Format of topic should be "nnnn_fan_id/status"
         # Where nnnn = location_id
@@ -333,7 +394,10 @@ class Fan:
         topic_l1 = message.topic.split("/")[0]
         fan_id = topic_l1.split("_")[1]
 
-        asyncio.run_coroutine_threadsafe(self._async_update_fan(), self._loop)
+        # Ignore if payload contains 'sendKeepAlive'
+        if payload.find('sendKeepAlive'):
+            payload_parts = payload.split(" ")
+            asyncio.run_coroutine_threadsafe(self._async_update_fan(), self._loop)
 
 
     async def _async_start_mqtt(self) -> bool:
@@ -352,7 +416,7 @@ class Fan:
         self._mqttc.connect(MQTT_BROKER, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE)
         self._mqttc.on_disconnect = self._mqtt_on_disconnect
         self._mqttc.message_callback_add(f"{self._mqtt_username}/status",self._mqtt_on_message_status)
-        self._mqttc.subscribe(f"{self._mqtt_username}/#")
+        self._mqttc.subscribe(f"{self._mqtt_username}/status")
         self._mqttc.loop_start()
         return True
 

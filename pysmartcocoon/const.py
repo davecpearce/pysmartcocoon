@@ -11,6 +11,10 @@ API_HEADERS = {
     "User-Agent": "SmartCocoon/1 CFNetwork/1312 Darwin/21.0.0"
 }
 
+# Default fan speed is 38% in the SmartCocoon app
+# but 33% works better for HomeAssistant
+DEFAULT_FAN_POWER_PCT = 33
+
 #MQTT Data
 MQTT_BROKER = "nlb-production-04b5ef4727e9be7d.elb.us-east-2.amazonaws.com"
 MQTT_PORT = 1883

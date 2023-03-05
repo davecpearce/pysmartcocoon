@@ -9,15 +9,15 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name='pysmartcocoon',
-    version='0.2.0', # Should be updated with new versions
+    version='0.5.4', # Should be updated with new versions
     author='Dave Pearce',
-    author_email='pearcd2@yahoo.com',
+    author_email='davepearce@live.com',
     packages=['pysmartcocoon'],
-    url='https://github.com/urbandave/pysmartcocoon',
+    url='https://github.com/davecpearce/pysmartcocoon',
     license='Open Source',
     long_description=README,
     long_description_content_type="text/markdown",
-    description='A simple API to controll SmartCocoon fans from Python.',
+    description='An API to control SmartCocoon fans from Python.',
     install_requires=[
         'asyncio-mqtt'
     ],

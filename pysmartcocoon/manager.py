@@ -89,9 +89,10 @@ class SmartCocoonManager:
     async def async_start_services(
         self,
         username: str,
-        password: str
+        password: str,
+        use_mqtt: bool = True
     ) -> bool:
-    
+
         _LOGGER.debug("Starting services")
 
         # Authenticate with the API
@@ -101,10 +102,14 @@ class SmartCocoonManager:
             # Make API calls to initial data
             await self.async_update_data()
 
-        # Start Fan services
-        _LOGGER.debug("Starting fan services")
-        for fan_id in self._fans:
-            await self._fans[fan_id].async_start_services()
+        # Start Fan services if enabled
+        self._use_mqtt = use_mqtt
+        if self._use_mqtt:
+            for fan_id in self._fans:
+                _LOGGER.debug("Starting services for fan: %s", fan_id)
+                await self._fans[fan_id].async_start_services()
+        else:
+            _LOGGER.debug("Fan services have been disabled")
 
         return self._api_connected
 
@@ -112,14 +117,15 @@ class SmartCocoonManager:
     async def async_stop_services(
         self
     ) -> bool:
-    
+
         _LOGGER.debug("Stopping services")
 
-        # Close the MQTT sessions managed by the fans
+        # Close the MQTT sessions managed by the fans if enabled
 
-        for fan_id in self._fans:
-            _LOGGER.debug("Stopping services for fan: %s", fan_id)
-            await self._fans[fan_id].async_stop_services()
+        if self._use_mqtt:
+            for fan_id in self._fans:
+                _LOGGER.debug("Stopping services for fan: %s", fan_id)
+                await self._fans[fan_id].async_stop_services()
 
         return True
 
@@ -131,9 +137,9 @@ class SmartCocoonManager:
         tasks.append(self.async_update_rooms())
         await asyncio.gather(*tasks)
 
-        """Fans requires rooms to be loaded in order to add the 
+        """Fans requires rooms to be loaded in order to add the
            room_name to the fan
-        """           
+        """
         await self.async_update_fans()
 
 
@@ -143,7 +149,7 @@ class SmartCocoonManager:
 
         entity = EntityType.LOCATIONS.value
         response = await self._api.async_request(
-            "GET", 
+            "GET",
             f"{API_URL}{entity}"
         )
 
@@ -161,7 +167,7 @@ class SmartCocoonManager:
 
         entity = EntityType.THERMOSTATS.value
         response = await self._api.async_request(
-            "GET", 
+            "GET",
             f"{API_URL}{entity}"
         )
 
@@ -179,7 +185,7 @@ class SmartCocoonManager:
 
         entity = EntityType.ROOMS.value
         response = await self._api.async_request(
-            "GET", 
+            "GET",
             f"{API_URL}{entity}"
         )
 
@@ -197,7 +203,7 @@ class SmartCocoonManager:
 
         entity = EntityType.FANS.value
         response = await self._api.async_request(
-            "GET", 
+            "GET",
             f"{API_URL}{entity}"
         )
 
@@ -212,7 +218,7 @@ class SmartCocoonManager:
 
                 await self._fans[fan_id].async_update_api_data( data )
                 room_name = await self.async_get_room_name(self._fans[fan_id].room_id)
-                self._fans[fan_id].update_room_name(room_name)
+                self._fans[fan_id].set_room_name(room_name)
 
         return self._fans
 
@@ -240,25 +246,35 @@ class SmartCocoonManager:
 
     async def async_fan_turn_on(self, fan_id: str) -> None:
         """Turn on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.ON)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ON)
 
 
     async def async_fan_turn_off(self, fan_id: str) -> None:
         """Turn on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.OFF)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.OFF)
 
 
-    async def async_fan_auto(self, fan_id: str) -> None:
+    async def async_set_fan_auto(self, fan_id: str) -> None:
         """Enable auto mode on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.AUTO)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.AUTO)
 
 
-    async def async_fan_eco(self, fan_id: str) -> None:
+    async def async_set_fan_eco(self, fan_id: str) -> None:
         """Enable eco mode on fan."""
-        await self._fans[fan_id].async_set_fan_mode(FanMode.ECO)
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ECO)
 
 
-    async def async_fan_set_speed(self, fan_id: str, fan_speed: int) -> None:
+    async def async_set_fan_modes(self, fan_id: str, fan_mode: FanMode, fan_speed_pct: int) -> None:
+        """Set fan mode and speed."""
+
+        await self._fans[fan_id].async_set_fan_modes(fan_mode = fan_mode, fan_speed_pct=fan_speed_pct)
+
+
+    async def async_set_fan_speed(self, fan_id: str, fan_speed_pct: int) -> None:
         """Set fan speed."""
 
-        await self._fans[fan_id].async_fan_set_speed(fan_speed)
+        await self._fans[fan_id].async_set_fan_modes(fan_speed_pct=fan_speed_pct)

@@ -1,16 +1,10 @@
-# -*- coding: utf-8 -*-
 """Session manager for the SmartCocoon REST API in order to maintain authentication token between calls."""
-from urllib.parse import quote_plus
+from datetime import datetime, timedelta
 
-from datetime import datetime
-from datetime import timedelta
+from requests import Response, Session
 
-from requests import Response
-from requests import Session
+from .const import API_AUTH_URL, API_HEADERS, API_URL
 
-from .const import API_HEADERS, API_URL
-from .const import API_URL
-from .const import API_AUTH_URL
 
 class SmartCocoonClientSession(Session):
     """HTTP session manager for the SmartCocoon api.
@@ -27,10 +21,7 @@ class SmartCocoonClientSession(Session):
         Session.__init__(self)
 
         # Authenticate with user and pass and store bearer token
-        payload_token = {
-            "email": username,
-            "password": password
-        }
+        payload_token = {"email": username, "password": password}
         self._headersAuth = API_HEADERS
 
         response = super().request(
@@ -44,8 +35,8 @@ class SmartCocoonClientSession(Session):
 
         self._bearerToken: str = response.headers["access-token"]
         self._bearerTokenExpiration: datetime = datetime.now() + timedelta(
-                seconds=int(response.headers["expiry"]) - 10
-            )
+            seconds=int(response.headers["expiry"]) - 10
+        )
         self._apiClient: str = response.headers["client"]
 
         self._headersAuth["access-token"] = self._bearerToken
@@ -65,7 +56,9 @@ class SmartCocoonClientSession(Session):
             the Response object corresponding to the result of the API request.
         """
 
-        response = super().request(method, f"{API_URL}{path}", headers=self._headersAuth, **kwargs)
+        response = super().request(
+            method, f"{API_URL}{path}", headers=self._headersAuth, **kwargs
+        )
         response.raise_for_status()
 
         return response

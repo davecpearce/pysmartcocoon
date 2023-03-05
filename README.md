@@ -10,19 +10,19 @@ This API is built for the main purpose of integrating into Home Assistant but ca
 
 ### Supported devices
 
-* SmartCocoon Smart Vents
+- SmartCocoon Smart Vents
 
 ## Features
 
 The following feature are supported:
 
-* Connect to the SmartCocoon cloud service
-* Obtain configuration data as it has been set up through the SmartCocoon mobile app
-* Ability to control fans
-    * Turn on/off
-    * Set speed
-    * Set Auto mode
-    * Set Eco mode
+- Connect to the SmartCocoon cloud service
+- Obtain configuration data as it has been set up through the SmartCocoon mobile app
+- Ability to control fans
+  - Turn on/off
+  - Set speed
+  - Set Auto mode
+  - Set Eco mode
 
 ## Examples
 
@@ -31,6 +31,6 @@ SmartCocoon API
 
 ## Work to do
 
-* The fans are using MQTT but this is not being leveraged yet
-* Discovery has not been implemented, not sure if this is possible
-* Fan status will currently require polling if the fan is changed directly in the app
+- The fans are using MQTT but this is not being leveraged yet
+- Discovery has not been implemented, not sure if this is possible
+- Fan status will currently require polling if the fan is changed directly in the app

@@ -255,6 +255,9 @@ class Fan:
         if self.speed_pct != fan_speed_pct:
             self.set_speed_pct(fan_speed_pct)
 
+    async def async_update_fan(self, fan_mode: FanMode = None) -> bool:
+        """Call the API to update the fan mode and speed."""
+
         request_body = {}
         request_body.setdefault("json", {})
         request_body["json"]["mode"] = self.mode

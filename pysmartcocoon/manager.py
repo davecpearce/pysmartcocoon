@@ -1,46 +1,24 @@
 """Define a manager to interact with SmartCocoon"""
 import asyncio
-import paho.mqtt.client as mqtt
-import uuid
-import traceback
-
-from aiohttp import ClientSession, ClientTimeout
-from aiohttp.client_exceptions import ClientError
-import async_timeout
-
-from datetime import datetime, timedelta
 import logging
+from typing import Optional
 
-from typing import (
-    Any,
-    cast,
-    Dict,
-    Optional,
-)
-
-from pysmartcocoon.const import (
-    API_URL,
-    API_FANS_URL,
-    DEFAULT_TIMEOUT,
-    FanMode,
-    EntityType,
-)
-
-from pysmartcocoon.errors import RequestError, SmartCocoonError
-from pysmartcocoon.errors import UnauthorizedError
-from pysmartcocoon.errors import TokenExpiredError
+from aiohttp import ClientSession
 
 from pysmartcocoon.api import SmartCocoonAPI
-from pysmartcocoon.location import Location
-from pysmartcocoon.thermostat import Thermostat
-from pysmartcocoon.room import Room
+from pysmartcocoon.const import API_URL, DEFAULT_TIMEOUT, EntityType, FanMode
 from pysmartcocoon.fan import Fan
+from pysmartcocoon.location import Location
+from pysmartcocoon.room import Room
+from pysmartcocoon.thermostat import Thermostat
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
 
 class SmartCocoonManager:
-    """Define the main controller class to communicate with the SmartCocoon cloud API"""
+    """Define the main controller class to communicate with the
+    SmartCocoon cloud API
+    """
 
     def __init__(
         self,
@@ -48,55 +26,44 @@ class SmartCocoonManager:
         request_timeout: int = DEFAULT_TIMEOUT,
     ) -> None:
 
-        self._api = SmartCocoonAPI(
-            session,
-            request_timeout
-        )
+        self._api = SmartCocoonAPI(session, request_timeout)
 
         self._api_connected: bool = False
 
         """Variables to store SmartCocoon response data"""
-        self._locations: Dict[int, Location] = {}
-        self._thermostats: Dict[int, Thermostat] = {}
-        self._rooms: Dict[int, Room] = {}
-        self._fans: Dict[int, Fan] = {}
-
+        self._locations: dict[int, Location] = {}
+        self._thermostats: dict[int, Thermostat] = {}
+        self._rooms: dict[int, Room] = {}
+        self._fans: dict[int, Fan] = {}
 
     @property
     def locations(self):
         """Return list of Locations."""
         return self._locations
 
-
     @property
     def thermostats(self):
         """Return list of Thermostats."""
         return self._thermostats
-
 
     @property
     def rooms(self):
         """Return list of Rooms."""
         return self._rooms
 
-
     @property
     def fans(self):
         """Return list of Fans."""
         return self._fans
 
-
     async def async_start_services(
-        self,
-        username: str,
-        password: str,
-        use_mqtt: bool = True
+        self, username: str, password: str, use_mqtt: bool = True
     ) -> bool:
 
         _LOGGER.debug("Starting services")
 
         # Authenticate with the API
-        self._api_connected = await self._api.async_authenticate( username, password )
+        self._api_connected = await self._api.async_authenticate(username, password)
 
         if self._api_connected:
             # Make API calls to initial data
@@ -113,10 +80,7 @@ class SmartCocoonManager:
 
         return self._api_connected
 
-
-    async def async_stop_services(
-        self
-    ) -> bool:
+    async def async_stop_services(self) -> bool:
 
         _LOGGER.debug("Stopping services")
 
@@ -128,7 +92,6 @@ class SmartCocoonManager:
                 await self._fans[fan_id].async_stop_services()
 
         return True
-
 
     async def async_update_data(self) -> None:
         tasks = []
@@ -142,16 +105,10 @@ class SmartCocoonManager:
         """
         await self.async_update_fans()
 
-
-    async def async_update_locations(
-        self
-    ) -> Dict[int, Location]:
+    async def async_update_locations(self) -> dict[int, Location]:
 
         entity = EntityType.LOCATIONS.value
-        response = await self._api.async_request(
-            "GET",
-            f"{API_URL}{entity}"
-        )
+        response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
         if len(response) != 0:
             for item in response[entity]:
@@ -160,16 +117,10 @@ class SmartCocoonManager:
 
         return self._locations
 
-
-    async def async_update_thermostats(
-        self
-    ) -> Dict[int, Thermostat]:
+    async def async_update_thermostats(self) -> dict[int, Thermostat]:
 
         entity = EntityType.THERMOSTATS.value
-        response = await self._api.async_request(
-            "GET",
-            f"{API_URL}{entity}"
-        )
+        response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
         if len(response) != 0:
             for item in response[entity]:
@@ -178,16 +129,10 @@ class SmartCocoonManager:
 
         return self._thermostats
 
-
-    async def async_update_rooms(
-        self
-    ) -> Dict[int, Room]:
+    async def async_update_rooms(self) -> dict[int, Room]:
 
         entity = EntityType.ROOMS.value
-        response = await self._api.async_request(
-            "GET",
-            f"{API_URL}{entity}"
-        )
+        response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
         if len(response) != 0:
             for item in response[entity]:
@@ -196,16 +141,10 @@ class SmartCocoonManager:
 
         return self._rooms
 
-
-    async def async_update_fans(
-        self
-    ) -> Dict[int, Fan]:
+    async def async_update_fans(self) -> dict[int, Fan]:
 
         entity = EntityType.FANS.value
-        response = await self._api.async_request(
-            "GET",
-            f"{API_URL}{entity}"
-        )
+        response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
         if len(response) != 0:
             for data in response[entity]:
@@ -216,63 +155,57 @@ class SmartCocoonManager:
                     fan = Fan(fan_id=fan_id, api=self._api)
                     self._fans[fan_id] = fan
 
-                await self._fans[fan_id].async_update_api_data( data )
-                room_name = await self.async_get_room_name(self._fans[fan_id].room_id)
+                await self._fans[fan_id].async_update_api_data(data)
+                room_id = self._fans[fan_id].room_id
+                room_name = await self.async_get_room_name(room_id)
                 self._fans[fan_id].set_room_name(room_name)
 
         return self._fans
 
-
-    async def async_get_room_name(
-        self,
-        room_id: int
-    ) -> str:
+    async def async_get_room_name(self, room_id: int) -> str:
 
         if room_id in self._rooms:
             room_name = self.rooms[room_id].name
 
-            _LOGGER.debug("In async_get_room_name for room_id: %s, found room nane: %s",
+            _LOGGER.debug(
+                "In async_get_room_name for room_id: %s, " "found room nane: %s",
                 room_id,
-                room_name
+                room_name,
             )
         else:
             room_name = None
-            _LOGGER.debug("In async_get_room_name, room_id: %s was not nout",
-                room_id
-            )
+            _LOGGER.debug("In async_get_room_name, room_id: %s was not nout", room_id)
 
         return room_name
-
 
     async def async_fan_turn_on(self, fan_id: str) -> None:
         """Turn on fan."""
 
         await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ON)
 
-
     async def async_fan_turn_off(self, fan_id: str) -> None:
         """Turn on fan."""
 
         await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.OFF)
-
 
     async def async_set_fan_auto(self, fan_id: str) -> None:
         """Enable auto mode on fan."""
 
         await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.AUTO)
 
-
     async def async_set_fan_eco(self, fan_id: str) -> None:
         """Enable eco mode on fan."""
 
         await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ECO)
 
-
-    async def async_set_fan_modes(self, fan_id: str, fan_mode: FanMode, fan_speed_pct: int) -> None:
+    async def async_set_fan_modes(
+        self, fan_id: str, fan_mode: FanMode, fan_speed_pct: int
+    ) -> None:
         """Set fan mode and speed."""
 
-        await self._fans[fan_id].async_set_fan_modes(fan_mode = fan_mode, fan_speed_pct=fan_speed_pct)
-
+        await self._fans[fan_id].async_set_fan_modes(
+            fan_mode=fan_mode, fan_speed_pct=fan_speed_pct
+        )
 
     async def async_set_fan_speed(self, fan_id: str, fan_speed_pct: int) -> None:
         """Set fan speed."""

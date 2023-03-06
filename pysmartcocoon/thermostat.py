@@ -1,12 +1,13 @@
 """Define a SmartCocoon Thermostat class."""
 # pylint: disable=too-few-public-methods,too-many-instance-attributes
 
-from typing import Any, Dict
+from typing import Any
+
 
 class Thermostat:  # pylint: disable=too-many-instance-attributes
     """Define the thermostat."""
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: dict[str, Any]) -> None:
         """Initialize."""
         self.id: int = data["id"]
         self.name: str = data["name"]

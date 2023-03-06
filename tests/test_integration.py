@@ -1,14 +1,13 @@
-# coding: utf-8
 """Tests SmartCocoon api module."""
 import asyncio
-import aiohttp 
-import time
 import logging
+import time
 
+import aiohttp
 import pytest
 
-from pysmartcocoon.manager import SmartCocoonManager
 from pysmartcocoon.fan import Fan
+from pysmartcocoon.manager import SmartCocoonManager
 
 # Enter correct real values here for the tests to complete successfully with real SmartCocoon Server calls.
 USERNAME = "user@domain.com"
@@ -18,11 +17,13 @@ FAN_ID = "1abc23"  # This is the physical fan ID printed from the fan
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
-@pytest.mark.skip("Not an automated test but an example of usage with real values.")
 
+@pytest.mark.skip("Not an automated test but an example of usage with real values.")
 def async_fan_update_callback(fan: Fan) -> None:
     """Handle fan updates."""
-    _LOGGER.debug(f"Received an update for Fan {fan.fan_id}: fan_on = {fan.fan_on}, power: {fan.power}, mode: {fan.mode}")
+    _LOGGER.debug(
+        f"Received an update for Fan {fan.fan_id}: fan_on = {fan.fan_on}, power: {fan.power}, mode: {fan.mode}"
+    )
 
 
 async def test_integration_fan_control() -> None:
@@ -30,11 +31,9 @@ async def test_integration_fan_control() -> None:
 
     async with aiohttp.ClientSession() as session:
         # Init manager
-        manager = SmartCocoonManager(
-            session=session
-        )
+        manager = SmartCocoonManager(session=session)
 
-        if not await manager.async_start_services( USERNAME, PASSWORD ):
+        if not await manager.async_start_services(USERNAME, PASSWORD):
             _LOGGER.debug("Authentication failed")
             return
 
@@ -53,7 +52,8 @@ async def test_integration_fan_control() -> None:
         time.sleep(WAIT_FOR)
         await manager.async_fan_turn_off(FAN_ID)
         time.sleep(WAIT_FOR)
-        
+
         await manager.async_stop_services()
+
 
 asyncio.run(test_integration_fan_control())

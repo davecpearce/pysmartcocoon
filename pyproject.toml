@@ -32,6 +32,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "black",
+    "build",
     "bumpversion",
     "flake8",
     "twine",

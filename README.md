@@ -1,4 +1,4 @@
-# SmartCocoon Python API 
+# SmartCocoon Python API
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]

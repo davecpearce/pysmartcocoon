@@ -274,6 +274,8 @@ class Fan:
             self.speed_pct,
         )
 
+        await self._async_update_fan()
+
         if fan_mode == FanMode.ON.value and not self.fan_on:
             _LOGGER.debug("Fan ID: %s - Changing fan_on to 'True'", self.fan_id)
             self._fan_on = True

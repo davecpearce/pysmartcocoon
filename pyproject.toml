@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysmartcocoon"
-version = "0.7.4"
+version = "0.7.7"
 
 description = "Library built for Home Assistant to integrate with the SmartCocoon"
 readme = "README.md"
@@ -23,10 +23,10 @@ classifiers = [
 keywords = ["smartcocoon", "fan"]
 
 dependencies = [
-    "aiohttp==3.8.4",
-    "async_timeout==4.0.2",
-    "paho.mqtt==1.6.1",
-    "requests==2.28.2"
+    "aiohttp>=3.8",
+    "async_timeout>=4.0",
+    "paho.mqtt>=1.6",
+    "requests>=2.28"
 ]
 
 [project.optional-dependencies]
@@ -48,7 +48,7 @@ test = [
 Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
-current_version = "0.7.4"
+current_version = "0.7.7"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true

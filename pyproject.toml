@@ -34,7 +34,7 @@ dev = [
     "black",
     "build",
     "bumpversion",
-    "flake8",
+    "pylint",
     "twine",
 ]
 test = [
@@ -60,9 +60,3 @@ push = true
     'current_version = "{version}"',
     'version = "{version}"'
 ]
-
-[tool.flake8]
-max-line-length = 130
-extend-ignore = ["D203", "E203", "E251", "E266", "E302", "E305", "E401", "E402", "E501", "F401", "F403", "W503"]
-exclude = [".git", "__pycache__", "dist"]
-max-complexity = 10

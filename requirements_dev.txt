@@ -1,0 +1,12 @@
+-r requirements.txt
+bandit
+black
+build
+bumpver
+flake8
+isort
+pip-tools
+pre-commit
+python-dotenv
+reorder-python-imports
+twine

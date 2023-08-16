@@ -1,4 +1,4 @@
-# SmartCocoon constants
+"""SmartCocoon constants."""
 
 from enum import Enum
 
@@ -24,6 +24,8 @@ DEFAULT_TIMEOUT: int = 30
 
 
 class EntityType(Enum):
+    """Class to define entity types"""
+
     # SmartCocoon entity types
 
     LOCATIONS = "client_systems"

@@ -7,7 +7,7 @@ FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
 ARG PYPROJECT_FILE='pyproject.toml'
 COPY ${PYPROJECT_FILE} .
 
-ARG REQUIREMENTS_FILE='requirements_dev.txt'
+ARG REQUIREMENTS_FILE='requirements_test.txt'
 COPY requirements.txt .
 COPY ${REQUIREMENTS_FILE} .
 RUN python3 -m pip install -r ${REQUIREMENTS_FILE}

@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysmartcocoon"
-version = "0.7.8"
+version = "0.7.9"
 
 description = "Library built for Home Assistant to integrate with the SmartCocoon"
 readme = "README.md"
@@ -34,7 +34,7 @@ dev = [
     "black",
     "build",
     "bumpversion",
-    "flake8",
+    "pylint",
     "twine",
 ]
 test = [
@@ -48,7 +48,7 @@ test = [
 Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
-current_version = "0.7.8"
+current_version = "0.7.9"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
@@ -60,9 +60,3 @@ push = true
     'current_version = "{version}"',
     'version = "{version}"'
 ]
-
-[tool.flake8]
-max-line-length = 130
-extend-ignore = ["D203", "E203", "E251", "E266", "E302", "E305", "E401", "E402", "E501", "F401", "F403", "W503"]
-exclude = [".git", "__pycache__", "dist"]
-max-complexity = 10

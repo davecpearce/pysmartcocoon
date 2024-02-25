@@ -1,4 +1,4 @@
-aiohttp>=3.8
-async_timeout>=4.0
-paho.mqtt>=1.6
-requests>=2.28
+aiohttp>=3.9.3
+async_timeout==4.0.3
+paho.mqtt==1.6.1
+requests==2.31.0

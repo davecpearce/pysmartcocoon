@@ -41,7 +41,7 @@ The following feature are supported:
 You can refer to the tests/test_integration.py to see an example of integration with the
 SmartCocoon API
 
-Copy the tests/template.env_ to _tests/.env_ file and update the account information with your your SmartCocoon account information:
+Copy the tests/template.env* to \_tests/.env* file and update the account information with your your SmartCocoon account information:
 
 ```python
 USERNAME="user@domain.com"

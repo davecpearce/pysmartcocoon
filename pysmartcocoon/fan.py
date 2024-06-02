@@ -432,7 +432,7 @@ class Fan:
             )
             return False
 
-        client_id = mqtt.base62(uuid.uuid4().int, padding=22)
+        client_id = str(uuid.uuid4())
         self._mqttc = mqtt.Client(client_id, protocol=mqtt.MQTTv311)
         self._mqttc.username_pw_set(
             self.mqtt_username, password=self.mqtt_password

@@ -57,7 +57,7 @@ class SmartCocoonManager:
         return self._fans
 
     async def async_start_services(
-        self, username: str, password: str, use_mqtt: bool = True
+        self, username: str, password: str, use_mqtt: bool = False
     ) -> bool:
         """Start services"""
 

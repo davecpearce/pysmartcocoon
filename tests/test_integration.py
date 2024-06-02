@@ -2,18 +2,23 @@
 import asyncio
 import logging
 import time
+from os import environ
+from os.path import dirname, join
 
 import aiohttp
 import pytest
+from dotenv import load_dotenv
 
 from pysmartcocoon.fan import Fan
 from pysmartcocoon.manager import SmartCocoonManager
 
-# Enter correct real values here for the tests to complete successfully
-# with real SmartCocoon Server calls.
-USERNAME = "user@domain.com"
-PASSWORD = "password"
-FAN_ID = "1abc23"  # This is the physical fan ID printed from the fan
+# Load the account information
+dotenv_path = join(dirname(__file__), ".env")
+load_dotenv(dotenv_path)
+
+USERNAME = environ.get("USERNAME")
+PASSWORD = environ.get("PASSWORD")
+FAN_ID = environ.get("FAN_ID")
 
 logging.basicConfig(level=logging.DEBUG)
 _LOGGER: logging.Logger = logging.getLogger(__name__)

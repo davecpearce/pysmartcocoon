@@ -15,11 +15,6 @@ API_HEADERS = {
 # but 33% works better for HomeAssistant
 DEFAULT_FAN_POWER_PCT = 33
 
-# MQTT Data
-MQTT_BROKER = "nlb-production-04b5ef4727e9be7d.elb.us-east-2.amazonaws.com"
-MQTT_PORT = 1883
-MQTT_KEEPALIVE = 600
-
 DEFAULT_TIMEOUT: int = 30
 
 

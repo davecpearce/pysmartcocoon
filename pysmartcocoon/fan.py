@@ -1,21 +1,14 @@
 """Define a SmartCocoon Fan class."""
 
-import asyncio
 import logging
-import uuid
 from datetime import datetime
-from typing import Any, Callable, Optional
-
-import paho.mqtt.client as mqtt
+from typing import Any
 
 from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.const import (
     API_FANS_URL,
     API_URL,
     DEFAULT_FAN_POWER_PCT,
-    MQTT_BROKER,
-    MQTT_KEEPALIVE,
-    MQTT_PORT,
     EntityType,
     FanMode,
 )
@@ -31,7 +24,6 @@ class Fan:
         self,
         fan_id: str,
         api: SmartCocoonAPI,
-        async_update_fan_callback: Optional[Callable[[str, Any], None]] = None,
     ) -> None:
         """Initialize."""
 
@@ -55,12 +47,6 @@ class Fan:
         self._room_name: str = None
 
         self._api = api
-
-        # MQTT attributes
-        self._async_update_fan_callback = async_update_fan_callback
-        self._mqtt_connected = False
-        self._mqttc: mqtt.Client = None
-        self._loop = asyncio.get_running_loop()
 
     @property
     def identifier(self) -> str:  # pylint: disable=invalid-name
@@ -336,13 +322,6 @@ class Fan:
         self._mqtt_username = data["mqtt_username"]
         self._mqtt_password = data["mqtt_password"]
 
-    async def async_set_async_update_fan_callback(
-        self, async_update_fan_callback: Callable[[str, Any], None]
-    ) -> None:
-        """Function to link to the fan callback"""
-
-        self._async_update_fan_callback = async_update_fan_callback
-
     async def _async_update_fan(self) -> bool:
         _LOGGER.debug(
             "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
@@ -356,103 +335,4 @@ class Fan:
         if len(response) is not None:
             await self.async_update_api_data(response)
 
-            if self._async_update_fan_callback:
-                _LOGGER.debug(
-                    "Fan ID: %s - Executing callback for fan update",
-                    self.fan_id,
-                )
-                await self._async_update_fan_callback()
-                _LOGGER.debug(
-                    "Fan ID: %s - Completed callback for fan update",
-                    self.fan_id,
-                )
-
         return True
-
-    def _mqtt_on_connect(
-        self, _mqttc, userdata, flags, rc: int
-    ):  # pylint: disable=unused-argument, invalid-name
-        if rc == 0:
-            _LOGGER.debug(
-                "Fan ID: %s - MQTT connection successful", self.fan_id
-            )
-            self._mqtt_connected = True
-        else:
-            _LOGGER.debug(
-                "Fan ID: %s - MQTT connection failed %i", self.fan_id, rc
-            )
-            self._mqtt_connected = False
-
-    def _mqtt_on_disconnect(
-        self, _mqttc, userdata, rc: int
-    ):  # pylint: disable=unused-argument, invalid-name
-        if rc == 0:
-            _LOGGER.debug(
-                "Fan ID: %s - MQTT has been successfully disconnected",
-                self.fan_id,
-            )
-        else:
-            _LOGGER.debug(
-                "Fan ID: %s - MQTT unexpected disconnect: %i", self.fan_id, rc
-            )
-            asyncio.run_coroutine_threadsafe(
-                self.async_start_services(), self._loop
-            )
-
-        self._mqtt_connected = False
-
-    def _mqtt_on_message_status(
-        self, _mqttc, userdata, message: mqtt.MQTTMessage
-    ):
-        payload = str(message.payload)
-        _LOGGER.debug(
-            "Fan ID: %s, userdata: %s, message: %s",
-            self.fan_id,
-            userdata,
-            payload,
-        )
-
-        # Format of topic should be "nnnn_fan_id/status"
-        # Where nnnn = location_id
-
-        # Ignore if payload contains 'sendKeepAlive'
-        if payload.find("sendKeepAlive"):
-            asyncio.run_coroutine_threadsafe(
-                self._async_update_fan(), self._loop
-            )
-
-    async def async_start_services(self) -> bool:
-        """Start MQTT services."""
-
-        _LOGGER.debug("Fan ID: %s - In async_start_mqtt", self.fan_id)
-
-        if self.mqtt_username is None:
-            _LOGGER.debug(
-                "Fan ID: %s - MQTT username is not provided", self.fan_id
-            )
-            return False
-
-        client_id = str(uuid.uuid4())
-        self._mqttc = mqtt.Client(client_id, protocol=mqtt.MQTTv311)
-        self._mqttc.username_pw_set(
-            self.mqtt_username, password=self.mqtt_password
-        )
-        self._mqttc.on_connect = self._mqtt_on_connect
-        self._mqttc.connect(
-            MQTT_BROKER, port=MQTT_PORT, keepalive=MQTT_KEEPALIVE
-        )
-        self._mqttc.on_disconnect = self._mqtt_on_disconnect
-        self._mqttc.message_callback_add(
-            f"{self._mqtt_username}/status", self._mqtt_on_message_status
-        )
-        self._mqttc.subscribe(f"{self._mqtt_username}/status")
-        self._mqttc.loop_start()
-        return True
-
-    async def async_stop_services(self) -> bool:
-        """Stop MQTT services."""
-
-        _LOGGER.debug("Fan ID: %s - Stopping MQTT services", self.fan_id)
-
-        self._mqttc.disconnect()
-        self._mqttc.loop_stop()

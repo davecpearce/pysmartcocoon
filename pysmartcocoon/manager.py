@@ -34,7 +34,6 @@ class SmartCocoonManager:
         self._thermostats: dict[int, Thermostat] = {}
         self._rooms: dict[int, Room] = {}
         self._fans: dict[int, Fan] = {}
-        self._use_mqtt = None
 
     @property
     def locations(self):
@@ -56,9 +55,7 @@ class SmartCocoonManager:
         """Return list of Fans."""
         return self._fans
 
-    async def async_start_services(
-        self, username: str, password: str, use_mqtt: bool = False
-    ) -> bool:
+    async def async_start_services(self, username: str, password: str) -> bool:
         """Start services"""
 
         _LOGGER.debug("Starting services")
@@ -72,33 +69,7 @@ class SmartCocoonManager:
             # Make API calls to initial data
             await self.async_update_data()
 
-        # Start Fan services if enabled
-        self._use_mqtt = use_mqtt
-        if self._use_mqtt:
-            for (
-                fan_id
-            ) in self._fans:  # pylint: disable=consider-using-dict-items
-                _LOGGER.debug("Starting services for fan: %s", fan_id)
-                await self._fans[fan_id].async_start_services()
-        else:
-            _LOGGER.debug("Fan services have been disabled")
-
         return self._api_connected
-
-    async def async_stop_services(self) -> bool:
-        """Stop servicez"""
-        _LOGGER.debug("Stopping services")
-
-        # Close the MQTT sessions managed by the fans if enabled
-
-        if self._use_mqtt:
-            for (
-                fan_id
-            ) in self._fans:  # pylint: disable=consider-using-dict-items
-                _LOGGER.debug("Stopping services for fan: %s", fan_id)
-                await self._fans[fan_id].async_stop_services()
-
-        return True
 
     async def async_update_data(self) -> None:
         """Update data from SmartCocoon API"""

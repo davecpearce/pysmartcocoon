@@ -30,7 +30,7 @@ multidict==6.0.5
     #   yarl
 requests==2.32.3
     # via pysmartcocoon (pyproject.toml)
-urllib3==2.2.1
+urllib3==2.2.2
     # via requests
 yarl==1.9.4
     # via aiohttp

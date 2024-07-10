@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pysmartcocoon"
-version = "1.1.0"
+version = "1.2.0"
 
 description = "Library built for Home Assistant to integrate with the SmartCocoon"
 readme = "README.md"
@@ -47,7 +47,7 @@ test = [
 Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
-current_version = "1.1.0"
+current_version = "1.2.0"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true

@@ -12,7 +12,7 @@ description = "Library built for Home Assistant to integrate with the SmartCocoo
 readme = "README.md"
 authors = [{ name = "Dave Pearce", email = "davepearce@live.com" }]
 license = { file = "LICENSE" }
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
 classifiers = [
     "License :: OSI Approved :: MIT License",

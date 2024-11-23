@@ -8,7 +8,7 @@ API_AUTH_URL = API_URL + "auth/sign_in"
 API_FANS_URL = API_URL + "fans/"
 API_HEADERS = {
     "Content-Type": "application/json",
-    "User-Agent": "SmartCocoon/1 CFNetwork/1312 Darwin/21.0.0",
+    "User-Agent": "SmartCocoon/12601 CFNetwork/1568.300.101 Darwin/24.2.0",
 }
 
 # Default fan speed is 38% in the SmartCocoon app

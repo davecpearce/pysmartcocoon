@@ -1,7 +1,11 @@
-from typing import TypedDict, NotRequired
+"""TypedDicts for SmartCocoon API payloads."""
+
+from typing import NotRequired, TypedDict
 
 
 class FanPayload(TypedDict):
+    """Fan payload fields returned by API."""
+
     id: int
     fan_id: str
     mode: str
@@ -19,6 +23,6 @@ class FanPayload(TypedDict):
 
 
 class FansResponse(TypedDict):
+    """Response shape for listing fans."""
+
     fans: list[FanPayload]
-
-

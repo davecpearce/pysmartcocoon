@@ -1,15 +1,16 @@
 """Define a manager to interact with SmartCocoon"""
+
 import asyncio
 import logging
-import traceback
 from datetime import datetime, timedelta
 from typing import Any, Optional, cast
 
 import async_timeout
-from aiohttp import ClientSession, ClientTimeout
-from aiohttp.client_exceptions import ClientError
+from aiohttp import ClientResponseError, ClientSession, ClientTimeout
+from aiohttp.client_exceptions import ClientConnectionError
 
 from pysmartcocoon.const import API_AUTH_URL, API_HEADERS, DEFAULT_TIMEOUT
+from pysmartcocoon.errors import RequestError, UnauthorizedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -47,7 +48,10 @@ class SmartCocoonAPI:
 
         return self._authenticated
 
-    async def async_request(self, method: str, url: str, **kwargs) -> dict:
+    # pylint: disable=too-many-branches,too-many-statements
+    async def async_request(
+        self, method: str, url: str, **kwargs
+    ) -> dict | None:
         """Make a request using token authentication.
         Args:
             method: Method for the HTTP request (example "GET" or "POST").
@@ -72,40 +76,50 @@ class SmartCocoonAPI:
             "Calling SmartCocoon API - method: %s, url: %s", method, url
         )
 
-        has_error = False
-        try:
-            async with async_timeout.timeout(self._request_timeout):
-                response = await session.request(
-                    method,
-                    url,
-                    headers=self._headers_auth,
-                    **kwargs,
-                )
-                _LOGGER.debug(
-                    "SmartCocoon API response status: %s", response.status
-                )
-                response.raise_for_status()
-                data = await response.json(content_type=None)
-        except ClientError as err:
-            # 401 - Authentication failed
-            # 403 - Forbidden error - likely needs to re-authenticate
-            error_codes = ["401", "403", "server disconnected"]
-            if any(x in str(err) for x in error_codes):
-                _LOGGER.error("SmartCocoon API response error: %s", str(err))
-                has_error = True
-        except asyncio.TimeoutError:
-            _LOGGER.error("API call to SmartCocoon timed out")
-            has_error = True
-        except Exception:
-            _LOGGER.error("API call to SmartCocoon failed with expected error")
-            _LOGGER.error(traceback.format_exc())
-            has_error = True
-        finally:
-            if not use_running_session:
-                await session.close()
-
-        if has_error:
-            return None
+        # Basic retry loop for transient errors
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                async with async_timeout.timeout(self._request_timeout):
+                    response = await session.request(
+                        method,
+                        url,
+                        headers=self._headers_auth,
+                        **kwargs,
+                    )
+                    _LOGGER.debug(
+                        "SmartCocoon API response status: %s", response.status
+                    )
+                    response.raise_for_status()
+                    data = await response.json(content_type=None)
+                    break
+            except ClientResponseError as err:
+                if err.status in (401, 403):
+                    _LOGGER.debug(
+                        "Auth error (%s), re-authenticating", err.status
+                    )
+                    # Try to re-authenticate once for protected endpoints
+                    if url != API_AUTH_URL and self._bearer_token:
+                        # Force auth to refresh token with existing uid/client
+                        self._authenticated = False
+                        # Raise UnauthorizedError so caller can re-authenticate
+                        raise UnauthorizedError(str(err)) from err
+                    raise UnauthorizedError(str(err)) from err
+                if 500 <= err.status < 600 and attempt < max_attempts:
+                    await asyncio.sleep(2 ** (attempt - 1))
+                    continue
+                raise RequestError(str(err)) from err
+            except (ClientConnectionError, asyncio.TimeoutError) as err:
+                if attempt < max_attempts:
+                    await asyncio.sleep(2 ** (attempt - 1))
+                    continue
+                raise RequestError(str(err)) from err
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("API call to SmartCocoon failed")
+                raise RequestError(str(err)) from err
+            finally:
+                if not use_running_session:
+                    await session.close()
 
         # If this request is for authorization, save auth data
         if url == API_AUTH_URL:

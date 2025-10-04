@@ -8,6 +8,7 @@ from aiohttp import ClientSession
 
 from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.const import API_URL, DEFAULT_TIMEOUT, EntityType, FanMode
+from pysmartcocoon.errors import RequestError, UnauthorizedError
 from pysmartcocoon.fan import Fan
 from pysmartcocoon.location import Location
 from pysmartcocoon.room import Room
@@ -84,7 +85,13 @@ class SmartCocoonManager:
     async def async_update_locations(self) -> dict[int, Location]:
         """Update location data"""
         entity = EntityType.LOCATIONS.value
-        response = await self._api.async_request("GET", f"{API_URL}{entity}")
+        try:
+            response = await self._api.async_request(
+                "GET", f"{API_URL}{entity}"
+            )
+        except (UnauthorizedError, RequestError) as err:
+            _LOGGER.debug("Failed to update locations: %s", err)
+            return self._locations
 
         if response and entity in response:
             for item in response[entity]:
@@ -96,7 +103,13 @@ class SmartCocoonManager:
     async def async_update_thermostats(self) -> dict[int, Thermostat]:
         """Update thermostate data"""
         entity = EntityType.THERMOSTATS.value
-        response = await self._api.async_request("GET", f"{API_URL}{entity}")
+        try:
+            response = await self._api.async_request(
+                "GET", f"{API_URL}{entity}"
+            )
+        except (UnauthorizedError, RequestError) as err:
+            _LOGGER.debug("Failed to update thermostats: %s", err)
+            return self._thermostats
 
         if response and entity in response:
             for item in response[entity]:
@@ -108,7 +121,13 @@ class SmartCocoonManager:
     async def async_update_rooms(self) -> dict[int, Room]:
         """Update rooms data"""
         entity = EntityType.ROOMS.value
-        response = await self._api.async_request("GET", f"{API_URL}{entity}")
+        try:
+            response = await self._api.async_request(
+                "GET", f"{API_URL}{entity}"
+            )
+        except (UnauthorizedError, RequestError) as err:
+            _LOGGER.debug("Failed to update rooms: %s", err)
+            return self._rooms
 
         if response and entity in response:
             for item in response[entity]:
@@ -120,7 +139,13 @@ class SmartCocoonManager:
     async def async_update_fans(self) -> dict[str, Fan]:
         """Update fans data"""
         entity = EntityType.FANS.value
-        response = await self._api.async_request("GET", f"{API_URL}{entity}")
+        try:
+            response = await self._api.async_request(
+                "GET", f"{API_URL}{entity}"
+            )
+        except (UnauthorizedError, RequestError) as err:
+            _LOGGER.debug("Failed to update fans: %s", err)
+            return self._fans
 
         if response and entity in response:
             for data in response[entity]:

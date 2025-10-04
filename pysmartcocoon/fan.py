@@ -177,7 +177,9 @@ class Fan:
     def set_room_name(self, room_name: str) -> bool:
         """Update the room_name"""
 
-        _LOGGER.debug("Fan ID: %s - Updating room_name to '%s'", self.fan_id, room_name)
+        _LOGGER.debug(
+            "Fan ID: %s - Updating room_name to '%s'", self.fan_id, room_name
+        )
 
         self._room_name = room_name
         return True
@@ -230,7 +232,11 @@ class Fan:
             else:
                 fan_speed_pct = self.speed_pct
         else:
-            if fan_speed_pct is None or fan_speed_pct < 0 or fan_speed_pct > 100:
+            if (
+                fan_speed_pct is None
+                or fan_speed_pct < 0
+                or fan_speed_pct > 100
+            ):
                 _LOGGER.debug(
                     (
                         "Fan ID: %s - Fan speed of %s%% is invalid, "
@@ -268,10 +274,14 @@ class Fan:
         await self._async_update_fan()
 
         if fan_mode == FanMode.ON and not self.fan_on:
-            _LOGGER.debug("Fan ID: %s - Changing fan_on to 'True'", self.fan_id)
+            _LOGGER.debug(
+                "Fan ID: %s - Changing fan_on to 'True'", self.fan_id
+            )
             self._fan_on = True
         elif fan_mode == FanMode.OFF:
-            _LOGGER.debug("Fan ID: %s - Changing fan_on to 'False'", self.fan_id)
+            _LOGGER.debug(
+                "Fan ID: %s - Changing fan_on to 'False'", self.fan_id
+            )
             self._fan_on = False
 
     async def async_update_api_data(
@@ -326,7 +336,9 @@ class Fan:
         self._mqtt_password = data["mqtt_password"]
 
     async def _async_update_fan(self) -> bool:
-        _LOGGER.debug("Fan ID: %s - Updating fan attributes from cloud", self.fan_id)
+        _LOGGER.debug(
+            "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
+        )
 
         response = await self._api.async_get_fan(self._identifier)
 

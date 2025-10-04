@@ -1,7 +1,6 @@
 """Tests SmartCocoon api module."""
 import asyncio
 import logging
-import time
 from os import environ
 from os.path import dirname, join
 
@@ -39,17 +38,17 @@ async def test_integration_fan_control() -> None:
         wait_for = 5
 
         await manager.async_fan_turn_on(FAN_ID)
-        time.sleep(wait_for)
+        await asyncio.sleep(wait_for)
         await manager.async_set_fan_speed(FAN_ID, 50)
-        time.sleep(wait_for)
+        await asyncio.sleep(wait_for)
         await manager.async_set_fan_speed(FAN_ID, 100)
-        time.sleep(wait_for)
+        await asyncio.sleep(wait_for)
         await manager.async_set_fan_auto(FAN_ID)
-        time.sleep(wait_for)
+        await asyncio.sleep(wait_for)
         await manager.async_set_fan_eco(FAN_ID)
-        time.sleep(wait_for)
+        await asyncio.sleep(wait_for)
         await manager.async_fan_turn_off(FAN_ID)
-        time.sleep(wait_for)
+        await asyncio.sleep(wait_for)
 
 
 asyncio.run(test_integration_fan_control())

@@ -9,7 +9,12 @@ import async_timeout
 from aiohttp import ClientResponseError, ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ClientConnectionError
 
-from pysmartcocoon.const import API_AUTH_URL, API_HEADERS, DEFAULT_TIMEOUT
+from pysmartcocoon.const import (
+    API_AUTH_URL,
+    API_FANS_URL,
+    API_HEADERS,
+    DEFAULT_TIMEOUT,
+)
 from pysmartcocoon.errors import RequestError, UnauthorizedError
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -33,6 +38,17 @@ class SmartCocoonAPI:
         # Make a private copy of default headers to avoid global mutation
         self._headers_auth = API_HEADERS.copy()
         self._user_id = None
+
+    async def __aenter__(self) -> "SmartCocoonAPI":
+        return self
+
+    async def __aexit__(self, *_: Any) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """Close internally-owned session if present."""
+        if self._session and not self._session.closed:
+            await self._session.close()
 
     async def async_authenticate(self, username: str, password: str) -> bool:
         """Function to authenticate user with API"""
@@ -123,18 +139,17 @@ class SmartCocoonAPI:
 
         # If this request is for authorization, save auth data
         if url == API_AUTH_URL:
-            self._bearer_token: str = response.headers["access-token"]
-            self._bearer_token_expiration: datetime = (
-                datetime.now()
-                + timedelta(seconds=int(response.headers["expiry"]) - 10)
+            self._bearer_token = response.headers["access-token"]
+            self._bearer_token_expiration = datetime.now() + timedelta(
+                seconds=int(response.headers["expiry"]) - 10
             )
-            self._api_client: str = response.headers["client"]
+            self._api_client = response.headers["client"]
 
             self._headers_auth["access-token"] = self._bearer_token
             self._headers_auth["client"] = self._api_client
             self._headers_auth["uid"] = data["data"]["email"]
 
-            self._user_id: str = data["data"]["id"]
+            self._user_id = data["data"]["id"]
             self._authenticated = True
 
         if data is not None:
@@ -142,3 +157,18 @@ class SmartCocoonAPI:
 
         _LOGGER.error("Response data is None")
         return None
+
+    async def async_get_fan(self, fan_identifier: int) -> dict | None:
+        """Fetch a single fan by internal identifier."""
+        return await self.async_request(
+            "GET", f"{API_FANS_URL}{fan_identifier}"
+        )
+
+    async def async_update_fan(
+        self, fan_identifier: int, mode: str, power: int
+    ) -> dict | None:
+        """Update a fan's mode and power."""
+        request_body: dict[str, Any] = {"json": {"mode": mode, "power": power}}
+        return await self.async_request(
+            "PUT", f"{API_FANS_URL}{fan_identifier}", **request_body
+        )

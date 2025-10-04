@@ -5,13 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from pysmartcocoon.api import SmartCocoonAPI
-from pysmartcocoon.const import (
-    API_FANS_URL,
-    API_URL,
-    DEFAULT_FAN_POWER_PCT,
-    EntityType,
-    FanMode,
-)
+from pysmartcocoon.const import DEFAULT_FAN_POWER_PCT, FanMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -266,9 +260,8 @@ class Fan:
         request_body.setdefault("json", {})
         request_body["json"]["mode"] = self.mode
         request_body["json"]["power"] = self.power
-
-        await self._api.async_request(
-            "PUT", f"{API_FANS_URL}{self._identifier}", **request_body
+        await self._api.async_update_fan(
+            fan_identifier=self._identifier, mode=self.mode, power=self.power
         )
 
         _LOGGER.debug(
@@ -347,10 +340,7 @@ class Fan:
             "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
         )
 
-        entity = EntityType.FANS.value
-        response = await self._api.async_request(
-            "GET", f"{API_URL}{entity}/{self._identifier}"
-        )
+        response = await self._api.async_get_fan(self._identifier)
 
         if response is not None:
             await self.async_update_api_data(response)

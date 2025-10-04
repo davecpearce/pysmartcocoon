@@ -33,4 +33,3 @@ jobs:
             - Executed hooks to surface potential breakages
           branch: chore/pre-commit-autoupdate-bot
           delete-branch: true
-

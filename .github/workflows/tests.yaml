@@ -32,3 +32,7 @@ jobs:
       - name: Run pre-commit on all files
         run: |
           pre-commit run --all-files --color=always
+      - name: Run mypy (scoped)
+        run: |
+          python -m pip install mypy
+          mypy pysmartcocoon/const.py pysmartcocoon/types.py

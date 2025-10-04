@@ -1,4 +1,5 @@
 """Define a manager to interact with SmartCocoon"""
+
 import asyncio
 import logging
 from typing import Optional
@@ -33,7 +34,7 @@ class SmartCocoonManager:
         self._locations: dict[int, Location] = {}
         self._thermostats: dict[int, Thermostat] = {}
         self._rooms: dict[int, Room] = {}
-        self._fans: dict[int, Fan] = {}
+        self._fans: dict[str, Fan] = {}
 
     @property
     def locations(self):
@@ -85,7 +86,7 @@ class SmartCocoonManager:
         entity = EntityType.LOCATIONS.value
         response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
-        if len(response) != 0:
+        if response and entity in response:
             for item in response[entity]:
                 location = Location(data=item)
                 self._locations[location.identifier] = location
@@ -97,7 +98,7 @@ class SmartCocoonManager:
         entity = EntityType.THERMOSTATS.value
         response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
-        if len(response) != 0:
+        if response and entity in response:
             for item in response[entity]:
                 thermostat = Thermostat(data=item)
                 self._thermostats[thermostat.identifier] = thermostat
@@ -109,19 +110,19 @@ class SmartCocoonManager:
         entity = EntityType.ROOMS.value
         response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
-        if len(response) != 0:
+        if response and entity in response:
             for item in response[entity]:
                 room = Room(data=item)
                 self._rooms[room.identifier] = room
 
         return self._rooms
 
-    async def async_update_fans(self) -> dict[int, Fan]:
+    async def async_update_fans(self) -> dict[str, Fan]:
         """Update fans data"""
         entity = EntityType.FANS.value
         response = await self._api.async_request("GET", f"{API_URL}{entity}")
 
-        if len(response) != 0:
+        if response and entity in response:
             for data in response[entity]:
                 # Check to see if Fan exists in _fans
                 fan_id = data["fan_id"]

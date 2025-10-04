@@ -32,7 +32,7 @@ repos:
           - --max-line-length=79
           - --ignore-imports=yes
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.4
+    rev: 1.7.7
     hooks:
       - id: bandit
         args:

@@ -320,7 +320,21 @@ class Fan:
         self._firmware_version = data["firmware_version"]
         self._is_room_estimating = data["is_room_estimating"]
         self._connected = data["connected"]
-        self._last_connection = data["last_connection"]
+        # Parse last_connection to datetime when provided as string
+        last_conn = data["last_connection"]
+        if isinstance(last_conn, str):
+            try:
+                iso_str = last_conn.replace("Z", "+00:00")
+                self._last_connection = datetime.fromisoformat(iso_str)
+            except Exception:  # pylint: disable=broad-except
+                _LOGGER.debug(
+                    "Fan ID: %s - Unable to parse last_connection: %s",
+                    self.fan_id,
+                    last_conn,
+                )
+                self._last_connection = None
+        else:
+            self._last_connection = last_conn
         self._power = data["power"]
         self._predicted_room_temperature = data["predicted_room_temperature"]
         self._room_id = data["room_id"]

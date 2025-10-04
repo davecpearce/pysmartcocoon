@@ -29,7 +29,8 @@ class SmartCocoonAPI:
         self._api_client = None
         self._bearer_token = None
         self._bearer_token_expiration = None
-        self._headers_auth = API_HEADERS
+        # Make a private copy of default headers to avoid global mutation
+        self._headers_auth = API_HEADERS.copy()
         self._user_id = None
 
     async def async_authenticate(self, username: str, password: str) -> bool:
@@ -77,7 +78,6 @@ class SmartCocoonAPI:
                 response = await session.request(
                     method,
                     url,
-                    ssl=False,
                     headers=self._headers_auth,
                     **kwargs,
                 )
@@ -127,4 +127,4 @@ class SmartCocoonAPI:
             return cast(dict[str, Any], data)
 
         _LOGGER.error("Response data is None")
-        return
+        return None

@@ -65,7 +65,9 @@ class SmartCocoonAPI:
         return self._authenticated
 
     # pylint: disable=too-many-branches,too-many-statements
-    async def async_request(self, method: str, url: str, **kwargs) -> dict | None:
+    async def async_request(
+        self, method: str, url: str, **kwargs
+    ) -> dict | None:
         """Make a request using token authentication.
         Args:
             method: Method for the HTTP request (example "GET" or "POST").
@@ -86,7 +88,9 @@ class SmartCocoonAPI:
 
         data = None
 
-        _LOGGER.debug("Calling SmartCocoon API - method: %s, url: %s", method, url)
+        _LOGGER.debug(
+            "Calling SmartCocoon API - method: %s, url: %s", method, url
+        )
 
         # Basic retry loop for transient errors
         max_attempts = 3
@@ -107,7 +111,9 @@ class SmartCocoonAPI:
                     break
             except ClientResponseError as err:
                 if err.status in (401, 403):
-                    _LOGGER.debug("Auth error (%s), re-authenticating", err.status)
+                    _LOGGER.debug(
+                        "Auth error (%s), re-authenticating", err.status
+                    )
                     # Try to re-authenticate once for protected endpoints
                     if url != API_AUTH_URL and self._bearer_token:
                         # Force auth to refresh token with existing uid/client
@@ -154,7 +160,9 @@ class SmartCocoonAPI:
 
     async def async_get_fan(self, fan_identifier: int) -> dict | None:
         """Fetch a single fan by internal identifier."""
-        return await self.async_request("GET", f"{API_FANS_URL}{fan_identifier}")
+        return await self.async_request(
+            "GET", f"{API_FANS_URL}{fan_identifier}"
+        )
 
     async def async_update_fan(
         self, fan_identifier: int, mode: str, power: int

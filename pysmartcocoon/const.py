@@ -1,6 +1,6 @@
 """SmartCocoon constants."""
 
-from enum import Enum
+from enum import Enum, StrEnum
 
 # API Data
 API_URL = "https://app.mysmartcocoon.com/api/"
@@ -29,7 +29,7 @@ class EntityType(Enum):
     FANS = "fans"
 
 
-class FanMode(Enum):
+class FanMode(StrEnum):
     """Fan mode."""
 
     ECO = "eco"
@@ -38,7 +38,7 @@ class FanMode(Enum):
     AUTO = "auto"
 
 
-class FanState(Enum):
+class FanState(StrEnum):
     """Fan State."""
 
     FAN_OFF = "false"

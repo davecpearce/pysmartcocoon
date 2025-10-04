@@ -5,13 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from pysmartcocoon.api import SmartCocoonAPI
-from pysmartcocoon.const import (
-    API_FANS_URL,
-    API_URL,
-    DEFAULT_FAN_POWER_PCT,
-    EntityType,
-    FanMode,
-)
+from pysmartcocoon.const import DEFAULT_FAN_POWER_PCT, FanMode
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -183,9 +177,7 @@ class Fan:
     def set_room_name(self, room_name: str) -> bool:
         """Update the room_name"""
 
-        _LOGGER.debug(
-            "Fan ID: %s - Updating room_name to '%s'", self.fan_id, room_name
-        )
+        _LOGGER.debug("Fan ID: %s - Updating room_name to '%s'", self.fan_id, room_name)
 
         self._room_name = room_name
         return True
@@ -238,11 +230,7 @@ class Fan:
             else:
                 fan_speed_pct = self.speed_pct
         else:
-            if (
-                fan_speed_pct is None
-                or fan_speed_pct < 0
-                or fan_speed_pct > 100
-            ):
+            if fan_speed_pct is None or fan_speed_pct < 0 or fan_speed_pct > 100:
                 _LOGGER.debug(
                     (
                         "Fan ID: %s - Fan speed of %s%% is invalid, "
@@ -266,9 +254,8 @@ class Fan:
         request_body.setdefault("json", {})
         request_body["json"]["mode"] = self.mode
         request_body["json"]["power"] = self.power
-
-        await self._api.async_request(
-            "PUT", f"{API_FANS_URL}{self._identifier}", **request_body
+        await self._api.async_update_fan(
+            fan_identifier=self._identifier, mode=self.mode, power=self.power
         )
 
         _LOGGER.debug(
@@ -281,14 +268,10 @@ class Fan:
         await self._async_update_fan()
 
         if fan_mode == FanMode.ON and not self.fan_on:
-            _LOGGER.debug(
-                "Fan ID: %s - Changing fan_on to 'True'", self.fan_id
-            )
+            _LOGGER.debug("Fan ID: %s - Changing fan_on to 'True'", self.fan_id)
             self._fan_on = True
         elif fan_mode == FanMode.OFF:
-            _LOGGER.debug(
-                "Fan ID: %s - Changing fan_on to 'False'", self.fan_id
-            )
+            _LOGGER.debug("Fan ID: %s - Changing fan_on to 'False'", self.fan_id)
             self._fan_on = False
 
     async def async_update_api_data(
@@ -343,14 +326,9 @@ class Fan:
         self._mqtt_password = data["mqtt_password"]
 
     async def _async_update_fan(self) -> bool:
-        _LOGGER.debug(
-            "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
-        )
+        _LOGGER.debug("Fan ID: %s - Updating fan attributes from cloud", self.fan_id)
 
-        entity = EntityType.FANS.value
-        response = await self._api.async_request(
-            "GET", f"{API_URL}{entity}/{self._identifier}"
-        )
+        response = await self._api.async_get_fan(self._identifier)
 
         if response is not None:
             await self.async_update_api_data(response)

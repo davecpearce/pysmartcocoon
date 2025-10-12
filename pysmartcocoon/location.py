@@ -1,4 +1,5 @@
 """Define a SmartCocoon Rocation class."""
+
 # pylint: disable=too-few-public-methods,too-many-instance-attributes
 
 from typing import Any
@@ -13,7 +14,7 @@ class Location:  # pylint: disable=too-many-instance-attributes
         self._postal_code: str = data["location"]["postal_code"]
 
     @property
-    def identifier(self) -> str:
+    def identifier(self) -> int:
         """Return location id"""
         return self._identifier
 

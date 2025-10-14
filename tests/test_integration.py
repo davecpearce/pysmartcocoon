@@ -9,8 +9,8 @@ import aiohttp
 import pytest
 from dotenv import load_dotenv
 
-from pysmartcocoon.manager import SmartCocoonManager
 from pysmartcocoon.const import FanMode
+from pysmartcocoon.manager import SmartCocoonManager
 
 # Load the account information
 dotenv_path = join(dirname(__file__), ".env")
@@ -37,7 +37,9 @@ async def _fan_control() -> None:
         # Init manager
         manager = SmartCocoonManager(session=session)
 
-        if not await manager.async_start_services(username=USERNAME, password=PASSWORD):
+        if not await manager.async_start_services(
+            username=USERNAME, password=PASSWORD
+        ):
             _LOGGER.debug("Authentication failed")
             return
 
@@ -70,7 +72,9 @@ async def _fan_modes() -> None:
     async with aiohttp.ClientSession() as session:
         manager = SmartCocoonManager(session=session)
 
-        if not await manager.async_start_services(username=USERNAME, password=PASSWORD):
+        if not await manager.async_start_services(
+            username=USERNAME, password=PASSWORD
+        ):
             _LOGGER.debug("Authentication failed")
             return
 

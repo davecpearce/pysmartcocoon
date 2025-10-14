@@ -19,7 +19,10 @@ def resolve_speed(
     fan_mode: FanMode,
     fan_speed_pct: int | None,
 ) -> int | None:
-    """Resolve a valid speed (0-100). Returns None if invalid input provided."""
+    """Resolve a valid speed (0-100).
+
+    Returns None if invalid input provided.
+    """
     if fan_speed_pct is None:
         if fan_mode == FanMode.OFF:
             return current_speed_pct

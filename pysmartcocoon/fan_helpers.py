@@ -5,7 +5,9 @@ from __future__ import annotations
 from pysmartcocoon.const import DEFAULT_FAN_POWER_PCT, FanMode
 
 
-def derive_mode_from_speed(current_mode: FanMode, fan_speed_pct: int | None) -> FanMode:
+def derive_mode_from_speed(
+    current_mode: FanMode, fan_speed_pct: int | None
+) -> FanMode:
     """Derive the target mode from a desired speed and the current mode."""
     if fan_speed_pct == 0:
         return FanMode.OFF if current_mode == FanMode.ON else current_mode
@@ -13,9 +15,14 @@ def derive_mode_from_speed(current_mode: FanMode, fan_speed_pct: int | None) -> 
 
 
 def resolve_speed(
-    current_speed_pct: int, fan_mode: FanMode, fan_speed_pct: int | None
+    current_speed_pct: int,
+    fan_mode: FanMode,
+    fan_speed_pct: int | None,
 ) -> int | None:
-    """Resolve a valid speed (0-100). Returns None if invalid input provided."""
+    """Resolve a valid speed (0-100).
+
+    Returns None if invalid input provided.
+    """
     if fan_speed_pct is None:
         if fan_mode == FanMode.OFF:
             return current_speed_pct

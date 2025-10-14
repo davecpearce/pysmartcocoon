@@ -60,6 +60,7 @@ async def _fan_control() -> None:
 
 @pytest.mark.integration
 def test_integration_fan_control() -> None:
+    """Integration smoke: fan control flow."""
     asyncio.run(_fan_control())
 
 
@@ -104,6 +105,7 @@ async def _fan_modes() -> None:
 
 @pytest.mark.integration
 def test_integration_fan_modes() -> None:
+    """Integration smoke: verify fan mode transitions."""
     asyncio.run(_fan_modes())
 
 

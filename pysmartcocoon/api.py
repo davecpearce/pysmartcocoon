@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import random
 from datetime import datetime, timedelta
 from typing import Any, Optional, cast
 
@@ -64,6 +65,18 @@ class SmartCocoonAPI:
 
         return self._authenticated
 
+    def _compute_retry_delay(
+        self, attempt: int, retry_after: str | None
+    ) -> float:
+        """Compute delay before retrying, honoring Retry-After when present.
+
+        Uses exponential backoff with jitter when header is absent or invalid.
+        """
+        if retry_after and retry_after.isdigit():
+            return float(int(retry_after))
+        base = 2 ** (attempt - 1)
+        return base + random.uniform(0, 0.5 * base)
+
     # pylint: disable=too-many-branches,too-many-statements
     async def async_request(
         self, method: str, url: str, **kwargs
@@ -121,6 +134,14 @@ class SmartCocoonAPI:
                         # Raise UnauthorizedError so caller can re-authenticate
                         raise UnauthorizedError(str(err)) from err
                     raise UnauthorizedError(str(err)) from err
+                if err.status == 429 and attempt < max_attempts:
+                    retry_after = (
+                        err.headers.get("Retry-After") if err.headers else None
+                    )
+                    await asyncio.sleep(
+                        self._compute_retry_delay(attempt, retry_after)
+                    )
+                    continue
                 if 500 <= err.status < 600 and attempt < max_attempts:
                     await asyncio.sleep(2 ** (attempt - 1))
                     continue

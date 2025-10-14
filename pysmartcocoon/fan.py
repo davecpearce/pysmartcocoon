@@ -5,7 +5,8 @@ from datetime import datetime
 from typing import Any, Optional
 
 from pysmartcocoon.api import SmartCocoonAPI
-from pysmartcocoon.const import DEFAULT_FAN_POWER_PCT, FanMode
+from pysmartcocoon.const import FanMode
+from pysmartcocoon.fan_helpers import derive_mode_from_speed, resolve_speed
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -177,9 +178,7 @@ class Fan:
     def set_room_name(self, room_name: str) -> bool:
         """Update the room_name"""
 
-        _LOGGER.debug(
-            "Fan ID: %s - Updating room_name to '%s'", self.fan_id, room_name
-        )
+        _LOGGER.debug("Fan ID: %s - Updating room_name to '%s'", self.fan_id, room_name)
 
         self._room_name = room_name
         return True
@@ -210,44 +209,15 @@ class Fan:
             return False
 
         if fan_mode is None:
-            # Determine value for fan_mode
-            if fan_speed_pct == 0:
-                if self.mode_enum == FanMode.ON:
-                    fan_mode = FanMode.OFF
-                else:
-                    fan_mode = self.mode_enum
-            else:
-                if self.mode_enum == FanMode.OFF:
-                    fan_mode = FanMode.ON
-                else:
-                    fan_mode = self.mode_enum
+            fan_mode = derive_mode_from_speed(self.mode_enum, fan_speed_pct)
 
         # Update fan mode if changed
         if self.mode_enum != fan_mode:
             self._mode = fan_mode.value
 
+        fan_speed_pct = resolve_speed(self.speed_pct, fan_mode, fan_speed_pct)
         if fan_speed_pct is None:
-            if fan_mode == FanMode.OFF:
-                fan_speed_pct = self.speed_pct
-            elif fan_mode == FanMode.ON and self.speed_pct == 0:
-                fan_speed_pct = DEFAULT_FAN_POWER_PCT
-            else:
-                fan_speed_pct = self.speed_pct
-        else:
-            if (
-                fan_speed_pct is None
-                or fan_speed_pct < 0
-                or fan_speed_pct > 100
-            ):
-                _LOGGER.debug(
-                    (
-                        "Fan ID: %s - Fan speed of %s%% is invalid, "
-                        "must be between 0%% and 100%%"
-                    ),
-                    self.fan_id,
-                    str(fan_speed_pct),
-                )
-                return False
+            return False
 
         # Update power if changed
         if self.speed_pct != fan_speed_pct:
@@ -255,6 +225,8 @@ class Fan:
 
         await self._async_set_fan(fan_mode)
         return True
+
+    # helpers moved to fan_helpers.py
 
     async def _async_set_fan(self, fan_mode: Optional[FanMode] = None) -> bool:
         """Call the API to update the fan mode and speed."""
@@ -273,14 +245,10 @@ class Fan:
         await self._async_update_fan()
 
         if fan_mode == FanMode.ON and not self.fan_on:
-            _LOGGER.debug(
-                "Fan ID: %s - Changing fan_on to 'True'", self.fan_id
-            )
+            _LOGGER.debug("Fan ID: %s - Changing fan_on to 'True'", self.fan_id)
             self._fan_on = True
         elif fan_mode == FanMode.OFF:
-            _LOGGER.debug(
-                "Fan ID: %s - Changing fan_on to 'False'", self.fan_id
-            )
+            _LOGGER.debug("Fan ID: %s - Changing fan_on to 'False'", self.fan_id)
             self._fan_on = False
 
     async def async_update_api_data(
@@ -335,9 +303,7 @@ class Fan:
         self._mqtt_password = data["mqtt_password"]
 
     async def _async_update_fan(self) -> bool:
-        _LOGGER.debug(
-            "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
-        )
+        _LOGGER.debug("Fan ID: %s - Updating fan attributes from cloud", self.fan_id)
 
         response = await self._api.async_get_fan(self._identifier)
 

@@ -1,4 +1,5 @@
 """Define a SmartCocoon Thermostat class."""
+
 # pylint: disable=too-few-public-methods,too-many-instance-attributes
 
 from typing import Any

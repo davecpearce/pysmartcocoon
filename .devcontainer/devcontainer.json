@@ -1,8 +1,15 @@
 {
-  "name": "Python 3",
+  "name": "Python 3.13.2 (pysmartcocoon)",
   "build": {
     "dockerfile": "Dockerfile",
-    "context": ".."
+    "context": "..",
+    "args": {
+      "VARIANT": "3.13.2"
+    }
+  },
+  "runArgs": ["--shm-size=2g", "--memory=4g"],
+  "containerEnv": {
+    "GH_TOKEN": "${localEnv:GH_TOKEN}"
   },
   "customizations": {
     "vscode": {
@@ -13,17 +20,31 @@
         "ms-python.black-formatter",
         "ms-python.pylint",
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "ms-python.vscode-pylance",
+        "ms-python.mypy-type-checker",
+        "ms-vscode.vscode-yaml",
+        "redhat.vscode-yaml",
+        "ms-vscode.makefile-tools"
       ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "[python]": {
           "editor.defaultFormatter": "ms-python.black-formatter",
           "editor.formatOnSave": true
-        }
+        },
+        "[yaml]": {
+          "editor.defaultFormatter": "redhat.vscode-yaml",
+          "editor.formatOnSave": true
+        },
+        "python.linting.mypyEnabled": true,
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestArgs": ["tests"]
       }
     }
   },
-  "postCreateCommand": "pip3 install --user -e .[test]",
+  "postCreateCommand": "python -m pip install --user -e .[test] && echo 'source .env' >> ~/.bashrc",
   "remoteUser": "vscode"
 }

@@ -8,6 +8,7 @@ pip-tools
 pre-commit
 pylint
 pytest
+pytest-asyncio
 python-dotenv
 reorder-python-imports
 twine

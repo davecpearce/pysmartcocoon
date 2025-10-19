@@ -1,6 +1,7 @@
 """Define a manager to interact with SmartCocoon"""
 
 import asyncio
+import json
 import logging
 import random
 from datetime import datetime, timedelta
@@ -33,12 +34,12 @@ class SmartCocoonAPI:
         self._session = session
         self._request_timeout = request_timeout
         self._authenticated = False
-        self._api_client = None
-        self._bearer_token = None
-        self._bearer_token_expiration = None
+        self._api_client: Optional[str] = None
+        self._bearer_token: Optional[str] = None
+        self._bearer_token_expiration: Optional[datetime] = None
         # Make a private copy of default headers to avoid global mutation
         self._headers_auth = API_HEADERS.copy()
-        self._user_id = None
+        self._user_id: Optional[int] = None
 
     async def __aenter__(self) -> "SmartCocoonAPI":
         return self
@@ -56,7 +57,7 @@ class SmartCocoonAPI:
         self._authenticated = False
 
         # Authenticate with user and pass
-        request_body = {}
+        request_body: dict[str, Any] = {}
         request_body.setdefault("json", {})
         request_body["json"]["email"] = username
         request_body["json"]["password"] = password
@@ -79,7 +80,7 @@ class SmartCocoonAPI:
 
     # pylint: disable=too-many-branches,too-many-statements
     async def async_request(
-        self, method: str, url: str, **kwargs
+        self, method: str, url: str, **kwargs: Any
     ) -> dict | None:
         """Make a request using token authentication.
         Args:
@@ -105,9 +106,38 @@ class SmartCocoonAPI:
             "Calling SmartCocoon API - method: %s, url: %s", method, url
         )
 
+        # Enhanced debug logging for HA integration
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            _LOGGER.debug(
+                "┌─ API REQUEST ──────────────────────────────────────────────"
+            )
+            _LOGGER.debug("│ Method: %s", method)
+            _LOGGER.debug("│ URL: %s", url)
+            _LOGGER.debug(
+                "│ Headers:\n%s", json.dumps(self._headers_auth, indent=2)
+            )
+            if "json" in kwargs:
+                _LOGGER.debug(
+                    "│ Request body (JSON):\n%s",
+                    json.dumps(kwargs["json"], indent=2),
+                )
+            if "data" in kwargs:
+                _LOGGER.debug("│ Request body (data): %s", kwargs["data"])
+            _LOGGER.debug(
+                "└────────────────────────────────────────────────────────────"
+            )
+
         # Basic retry loop for transient errors
         max_attempts = 3
         for attempt in range(1, max_attempts + 1):
+            if _LOGGER.isEnabledFor(logging.DEBUG) and attempt > 1:
+                _LOGGER.debug(
+                    "Retry attempt %d/%d for %s %s",
+                    attempt,
+                    max_attempts,
+                    method,
+                    url,
+                )
             try:
                 async with async_timeout.timeout(self._request_timeout):
                     response = await session.request(
@@ -119,8 +149,31 @@ class SmartCocoonAPI:
                     _LOGGER.debug(
                         "SmartCocoon API response status: %s", response.status
                     )
+
+                    # Enhanced debug logging for HA integration
+                    if _LOGGER.isEnabledFor(logging.DEBUG):
+                        _LOGGER.debug(
+                            "┌─ API RESPONSE"
+                            " ─────────────────────────────────────────────"
+                        )
+                        _LOGGER.debug("│ Method: %s | URL: %s", method, url)
+                        _LOGGER.debug("│ Status: %s", response.status)
+                        _LOGGER.debug(
+                            "│ Headers:\n%s",
+                            json.dumps(dict(response.headers), indent=2),
+                        )
+
                     response.raise_for_status()
                     data = await response.json(content_type=None)
+
+                    # Debug: Log response body
+                    if _LOGGER.isEnabledFor(logging.DEBUG):
+                        _LOGGER.debug(
+                            "│ Response body:\n%s", json.dumps(data, indent=2)
+                        )
+                        _LOGGER.debug(
+                            "└────────────────────────────────────────────────────────────"  # pylint: disable=line-too-long
+                        )
                     break
             except ClientResponseError as err:
                 if err.status in (401, 403):
@@ -160,6 +213,45 @@ class SmartCocoonAPI:
 
         # If this request is for authorization, save auth data
         if url == API_AUTH_URL:
+            if _LOGGER.isEnabledFor(logging.DEBUG):
+                _LOGGER.debug(
+                    "┌─ AUTHENTICATION SUCCESS ──────────────────────────────"
+                )
+                _LOGGER.debug(
+                    "│ User ID: %s",
+                    (
+                        data["data"]["id"]
+                        if data and "data" in data
+                        else "Unknown"
+                    ),
+                )
+                _LOGGER.debug(
+                    "│ Email: %s",
+                    (
+                        data["data"]["email"]
+                        if data and "data" in data
+                        else "Unknown"
+                    ),
+                )
+                _LOGGER.debug(
+                    "│ Token expires in: %s seconds",
+                    response.headers.get("expiry", "Unknown"),
+                )
+                _LOGGER.debug(
+                    "└─────────────────────────────────────────────────────────"  # pylint: disable=line-too-long
+                )
+
+            # Check if required headers are present
+            if "access-token" not in response.headers:
+                _LOGGER.error("Missing access-token in response headers")
+                return None
+            if "expiry" not in response.headers:
+                _LOGGER.error("Missing expiry in response headers")
+                return None
+            if "client" not in response.headers:
+                _LOGGER.error("Missing client in response headers")
+                return None
+
             self._bearer_token = response.headers["access-token"]
             self._bearer_token_expiration = datetime.now() + timedelta(
                 seconds=int(response.headers["expiry"]) - 10
@@ -168,10 +260,23 @@ class SmartCocoonAPI:
 
             self._headers_auth["access-token"] = self._bearer_token
             self._headers_auth["client"] = self._api_client
-            self._headers_auth["uid"] = data["data"]["email"]
 
-            self._user_id = data["data"]["id"]
-            self._authenticated = True
+            # Only mark as authenticated if we have valid user data
+            if (
+                data is not None
+                and "data" in data
+                and "id" in data["data"]
+                and "email" in data["data"]
+            ):
+                self._headers_auth["uid"] = data["data"]["email"]
+                self._user_id = data["data"]["id"]
+                self._authenticated = True
+            else:
+                _LOGGER.error(
+                    "Authentication failed: Missing or invalid user data "
+                    "in response"
+                )
+                self._authenticated = False
 
         if data is not None:
             return cast(dict[str, Any], data)

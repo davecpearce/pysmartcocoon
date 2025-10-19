@@ -39,7 +39,7 @@ class Fan:
         self._mqtt_password: Optional[str] = None
 
         # Extra attributes not provided by API
-        self._room_name: str = None
+        self._room_name: Optional[str] = None
 
         self._api = api
 
@@ -107,6 +107,42 @@ class Fan:
     def mode_enum(self) -> FanMode:
         """Return the current mode setting of the fan"""
         return FanMode(self._mode) if self._mode is not None else FanMode.OFF
+
+    def get_extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes for Home Assistant integration."""
+        attributes = {
+            "mode": self._mode,
+            "connected": self._connected,
+            "last_connection": (
+                self._last_connection.isoformat()
+                if self._last_connection
+                else None
+            ),
+            "firmware_version": self._firmware_version,
+            "power": self._power,
+            "room_name": self._room_name,
+            "room_id": self._room_id,
+        }
+
+        # Add time since last connection
+        if self._last_connection:
+            time_since = (
+                datetime.now(self._last_connection.tzinfo)
+                - self._last_connection
+            )
+            attributes["time_since_connection"] = str(time_since).split(
+                ".", maxsplit=1
+            )[
+                0
+            ]  # Remove microseconds
+            attributes["connection_status"] = (
+                "Connected" if self._connected else "Disconnected"
+            )
+        else:
+            attributes["time_since_connection"] = "Unknown"
+            attributes["connection_status"] = "Unknown"
+
+        return attributes
 
     @property
     def power(self) -> int:
@@ -225,16 +261,34 @@ class Fan:
         if self.speed_pct != fan_speed_pct:
             self.set_speed_pct(fan_speed_pct)
 
-        await self._async_set_fan(fan_mode)
-        return True
+        # Attempt to update the fan via API
+        success = await self._async_set_fan(fan_mode)
+        return success
 
     # helpers moved to fan_helpers.py
 
     async def _async_set_fan(self, fan_mode: Optional[FanMode] = None) -> bool:
         """Call the API to update the fan mode and speed."""
 
+        # Check if we have the required data to make the API call
+        if self._identifier is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Cannot update fan: identifier is None",
+                self.fan_id,
+            )
+            return False
+
+        if self.mode is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Cannot update fan: mode is None", self.fan_id
+            )
+            return False
+
+        # Make the API call
         await self._api.async_update_fan(
-            fan_identifier=self._identifier, mode=self.mode, power=self.power
+            fan_identifier=self._identifier,
+            mode=self.mode,
+            power=self.power,
         )
 
         _LOGGER.debug(
@@ -257,6 +311,8 @@ class Fan:
             )
             self._fan_on = False
 
+        return True
+
     async def async_update_api_data(
         self,
         data: dict[str, Any],
@@ -265,13 +321,13 @@ class Fan:
 
         _LOGGER.debug("Fan ID: %s - In async_update_api_data", data["fan_id"])
 
-        self._identifier: int = data["id"]
-        self._fan_id: str = (
+        self._identifier = data["id"]
+        self._fan_id = (
             data["fan_id"] if data.get("fan_id") is not None else self._fan_id
         )
 
         # Fan attributes from SmartCocoon
-        self._mode: str = data["mode"]
+        self._mode = data["mode"]
 
         # fan_on does not always reflect the current mode, mode is more
         # accurate if set to always_on or always_off
@@ -281,7 +337,7 @@ class Fan:
         elif self._mode == FanMode.OFF.value:
             self._fan_on = False
         else:
-            self._fan_on: bool = data["fan_on"]
+            self._fan_on = data["fan_on"]
 
         self._firmware_version = data["firmware_version"]
         self._is_room_estimating = data["is_room_estimating"]
@@ -308,14 +364,27 @@ class Fan:
         self._mqtt_username = data["mqtt_username"]
         self._mqtt_password = data["mqtt_password"]
 
+        return True
+
     async def _async_update_fan(self) -> bool:
         _LOGGER.debug(
             "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
         )
 
+        if self._identifier is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Cannot update fan: identifier is None",
+                self.fan_id,
+            )
+            return False
+
         response = await self._api.async_get_fan(self._identifier)
 
-        if response is not None:
-            await self.async_update_api_data(response)
+        if response is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Failed to get fan data from API", self.fan_id
+            )
+            return False
 
+        await self.async_update_api_data(response)
         return True

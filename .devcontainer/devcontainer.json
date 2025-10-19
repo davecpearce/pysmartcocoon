@@ -8,6 +8,9 @@
     }
   },
   "runArgs": ["--shm-size=2g", "--memory=4g"],
+  "containerEnv": {
+    "GH_TOKEN": "${localEnv:GH_TOKEN}"
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -42,6 +45,6 @@
       }
     }
   },
-  "postCreateCommand": "python -m pip install --user -e .[test]",
+  "postCreateCommand": "python -m pip install --user -e .[test] && echo 'source .env' >> ~/.bashrc",
   "remoteUser": "vscode"
 }

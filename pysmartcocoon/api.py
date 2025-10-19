@@ -260,10 +260,23 @@ class SmartCocoonAPI:
 
             self._headers_auth["access-token"] = self._bearer_token
             self._headers_auth["client"] = self._api_client
-            if data is not None:
+
+            # Only mark as authenticated if we have valid user data
+            if (
+                data is not None
+                and "data" in data
+                and "id" in data["data"]
+                and "email" in data["data"]
+            ):
                 self._headers_auth["uid"] = data["data"]["email"]
                 self._user_id = data["data"]["id"]
-            self._authenticated = True
+                self._authenticated = True
+            else:
+                _LOGGER.error(
+                    "Authentication failed: Missing or invalid user data "
+                    "in response"
+                )
+                self._authenticated = False
 
         if data is not None:
             return cast(dict[str, Any], data)

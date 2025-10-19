@@ -261,20 +261,35 @@ class Fan:
         if self.speed_pct != fan_speed_pct:
             self.set_speed_pct(fan_speed_pct)
 
-        await self._async_set_fan(fan_mode)
-        return True
+        # Attempt to update the fan via API
+        success = await self._async_set_fan(fan_mode)
+        return success
 
     # helpers moved to fan_helpers.py
 
     async def _async_set_fan(self, fan_mode: Optional[FanMode] = None) -> bool:
         """Call the API to update the fan mode and speed."""
 
-        if self._identifier is not None and self.mode is not None:
-            await self._api.async_update_fan(
-                fan_identifier=self._identifier,
-                mode=self.mode,
-                power=self.power,
+        # Check if we have the required data to make the API call
+        if self._identifier is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Cannot update fan: identifier is None",
+                self.fan_id,
             )
+            return False
+
+        if self.mode is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Cannot update fan: mode is None", self.fan_id
+            )
+            return False
+
+        # Make the API call
+        await self._api.async_update_fan(
+            fan_identifier=self._identifier,
+            mode=self.mode,
+            power=self.power,
+        )
 
         _LOGGER.debug(
             "Fan ID: %s - Fan Mode was set to %s, speed to %s",

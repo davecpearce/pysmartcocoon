@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from aiohttp import ClientSession
 
@@ -38,22 +38,22 @@ class SmartCocoonManager:
         self._fans: dict[str, Fan] = {}
 
     @property
-    def locations(self):
+    def locations(self) -> dict[int, Any]:
         """Return list of Locations."""
         return self._locations
 
     @property
-    def thermostats(self):
+    def thermostats(self) -> dict[int, Any]:
         """Return list of Thermostats."""
         return self._thermostats
 
     @property
-    def rooms(self):
+    def rooms(self) -> dict[int, Any]:
         """Return list of Rooms."""
         return self._rooms
 
     @property
-    def fans(self):
+    def fans(self) -> dict[str, Any]:
         """Return list of Fans."""
         return self._fans
 
@@ -75,7 +75,7 @@ class SmartCocoonManager:
 
     async def async_update_data(self) -> None:
         """Update data from SmartCocoon API"""
-        tasks = []
+        tasks: list[Any] = []
         tasks.append(self.async_update_locations())
         tasks.append(self.async_update_thermostats())
         tasks.append(self.async_update_rooms())
@@ -158,8 +158,9 @@ class SmartCocoonManager:
 
                 await self._fans[fan_id].async_update_api_data(data)
                 room_id = self._fans[fan_id].room_id
-                room_name = await self.async_get_room_name(room_id)
-                self._fans[fan_id].set_room_name(room_name)
+                if room_id is not None:
+                    room_name = await self.async_get_room_name(room_id)
+                    self._fans[fan_id].set_room_name(room_name)
 
         return self._fans
 
@@ -173,12 +174,11 @@ class SmartCocoonManager:
                 room_id,
                 room_name,
             )
-        else:
-            room_name = None
-            msg = f"In async_get_room_name, room_id: {room_id} was not found"
-            _LOGGER.debug(msg)
+            return room_name
 
-        return room_name
+        msg = f"In async_get_room_name, room_id: {room_id} was not found"
+        _LOGGER.debug(msg)
+        return "Unknown"
 
     async def async_fan_turn_on(self, fan_id: str) -> None:
         """Turn on fan."""

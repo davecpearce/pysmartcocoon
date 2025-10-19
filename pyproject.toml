@@ -12,7 +12,7 @@ description = "Library built for Home Assistant to integrate with the SmartCocoo
 readme = "README.md"
 authors = [{ name = "Dave Pearce", email = "davepearce@live.com" }]
 license = "MIT"
-requires-python = ">=3.12"
+requires-python = ">=3.13.2"
 
 classifiers = [
     "Programming Language :: Python",
@@ -58,8 +58,18 @@ push = true
     'version = "{version}"'
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (require real API credentials)",
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "duplicate-code",  # Allow duplicate code in test files
+]
+
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 warn_unused_ignores = true
 disallow_untyped_defs = true
 no_implicit_optional = true

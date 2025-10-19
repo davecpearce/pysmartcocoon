@@ -371,10 +371,20 @@ class Fan:
             "Fan ID: %s - Updating fan attributes from cloud", self.fan_id
         )
 
-        if self._identifier is not None:
-            response = await self._api.async_get_fan(self._identifier)
+        if self._identifier is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Cannot update fan: identifier is None",
+                self.fan_id,
+            )
+            return False
 
-            if response is not None:
-                await self.async_update_api_data(response)
+        response = await self._api.async_get_fan(self._identifier)
 
+        if response is None:
+            _LOGGER.warning(
+                "Fan ID: %s - Failed to get fan data from API", self.fan_id
+            )
+            return False
+
+        await self.async_update_api_data(response)
         return True

@@ -5,7 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.4.0] - 2024-01-XX
+## [1.5.0] - 2025-12-14
+
+### Added
+
+- **`__version__` attribute** in package `__init__.py` for easier version checking
+
+### Fixed
+
+- **Silent fan update failure bug** - Fan updates now properly report failures
+- **Authentication bug** - Improved authentication error handling and code quality
+- **\_async_update_fan method** - Fixed to properly handle failure cases
+
+### Changed
+
+- **Dependency updates**:
+  - Bumped aiohttp from 3.13.1 to 3.13.2
+  - Bumped actions/checkout from 5 to 6 in GitHub Actions workflows
+  - Bumped peter-evans/create-pull-request from 7 to 8 in GitHub Actions workflows
+- **Pre-commit hooks**: Autoupdated to latest versions
+
+### Documentation
+
+- Added integration test documentation
+
+## [1.4.0] - 2025-10-19
 
 ### Added
 

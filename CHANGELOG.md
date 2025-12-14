@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Silent fan update failure bug** - Fan updates now properly report failures
 - **Authentication bug** - Improved authentication error handling and code quality
 - **\_async_update_fan method** - Fixed to properly handle failure cases
+- **Pre-commit prettier hook** - Replaced unstable alpha version with stable v3.1.0
 
 ### Changed
 

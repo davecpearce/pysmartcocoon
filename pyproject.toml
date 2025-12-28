@@ -4,9 +4,13 @@
 requires = ["setuptools>=61.0.0","wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+# Explicitly exclude node_modules and other non-package directories
+exclude = ["node_modules*", "tests*", "dist*", "build*", ".git*", ".github*", ".devcontainer*", "docs*", "scripts*"]
+
 [project]
 name = "pysmartcocoon"
-version = "1.4.0"
+version = "1.4.1"
 
 description = "Library built for Home Assistant to integrate with the SmartCocoon"
 readme = "README.md"
@@ -45,7 +49,7 @@ test = [
 Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
-current_version = "1.4.0"
+current_version = "1.4.1"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true

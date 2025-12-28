@@ -4,6 +4,10 @@
 requires = ["setuptools>=61.0.0","wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+# Explicitly exclude node_modules and other non-package directories
+exclude = ["node_modules*", "tests*", "dist*", "build*", ".git*", ".github*", ".devcontainer*", "docs*", "scripts*"]
+
 [project]
 name = "pysmartcocoon"
 version = "1.5.0"

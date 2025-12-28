@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.5.0] - 2025-12-14
+## [1.4.1] - 2025-12-14
 
 ### Added
 
@@ -13,9 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Silent fan update failure bug** - Fan updates now properly report failures
-- **Authentication bug** - Improved authentication error handling and code quality
-- **\_async_update_fan method** - Fixed to properly handle failure cases
+- **Devcontainer build error** - Fixed setuptools package discovery to exclude `node_modules` directory
 - **Pre-commit prettier hook** - Replaced unstable alpha version with stable v3.1.0
 
 ### Changed
@@ -26,9 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bumped peter-evans/create-pull-request from 7 to 8 in GitHub Actions workflows
 - **Pre-commit hooks**: Autoupdated to latest versions
 
-### Documentation
+### Maintenance
 
-- Added integration test documentation
+- Added `node_modules/` to `.gitignore` to prevent cache files from being committed
+- Removed accidentally committed prettier cache file
 
 ## [1.4.0] - 2025-10-19
 

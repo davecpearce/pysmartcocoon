@@ -176,11 +176,13 @@ pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
 ### Common Issues
 
 1. **Authentication Errors**
+
    - Check your credentials
    - Enable debug logging to see detailed error information
    - Verify your SmartCocoon account is active
 
 2. **No Debug Output**
+
    - Ensure `RUN_INTEGRATION=1` is set (for development)
    - Check logging level is set to DEBUG
    - Verify logger configuration in Home Assistant

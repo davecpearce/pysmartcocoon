@@ -213,6 +213,7 @@ Debug logging generates a lot of output and may impact performance:
 ### Recommended Usage
 
 1. **Enable** debug logging when:
+
    - Setting up the integration for the first time
    - Troubleshooting connection or authentication issues
    - Investigating unexpected behavior

@@ -156,6 +156,7 @@ pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
    ```
 
 2. **Make your changes**:
+
    - Write your code following the style guidelines
    - Add tests for new functionality
    - Update documentation if needed

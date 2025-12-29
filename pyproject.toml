@@ -10,7 +10,7 @@ exclude = ["node_modules*", "tests*", "dist*", "build*", ".git*", ".github*", ".
 
 [project]
 name = "pysmartcocoon"
-version = "1.4.1"
+version = "1.4.2"
 
 description = "Library built for Home Assistant to integrate with the SmartCocoon"
 readme = "README.md"
@@ -49,7 +49,7 @@ test = [
 Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
-current_version = "1.4.1"
+current_version = "1.4.2"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true

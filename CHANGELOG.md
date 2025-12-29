@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2025-12-29
+
+### Fixed
+
+- **Connection status correction** - Fixed issue where fans that were unplugged or offline for more than 15 minutes were incorrectly reported as connected. The library now automatically corrects stale connection status from the SmartCocoon API by checking the `last_connection` timestamp.
+
+### Added
+
+- **Debug logging** - Added debug logging to show raw API `connected` values for troubleshooting connection status issues
+- **Debug script** - Added `tests/debug_fan_connection.py` script to help diagnose connection status issues by comparing raw API data with processed values
+- **Debug documentation** - Added `DEBUG_FAN_CONNECTION.md` guide for troubleshooting connection status problems
+
 ## [1.4.1] - 2025-12-14
 
 ### Added

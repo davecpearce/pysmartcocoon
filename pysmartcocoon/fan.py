@@ -341,7 +341,15 @@ class Fan:
 
         self._firmware_version = data["firmware_version"]
         self._is_room_estimating = data["is_room_estimating"]
-        self._connected = data["connected"]
+        # Log raw connected value from API for debugging
+        raw_connected = data.get("connected")
+        _LOGGER.debug(
+            "Fan ID: %s - Raw API 'connected' value: %s (type: %s)",
+            self.fan_id,
+            raw_connected,
+            type(raw_connected).__name__,
+        )
+
         # Parse last_connection to datetime when provided as string
         last_conn = data["last_connection"]
         if isinstance(last_conn, str):
@@ -357,6 +365,43 @@ class Fan:
                 self._last_connection = None
         else:
             self._last_connection = last_conn
+
+        # Correct stale connection status from API
+        # If API says connected=True but last_connection is > 15 minutes ago,
+        # the fan is actually disconnected (API has stale data)
+        api_connected = data["connected"]
+        if api_connected and self._last_connection:
+            time_since_connection = (
+                datetime.now(self._last_connection.tzinfo)
+                - self._last_connection
+            )
+            minutes_since_connection = (
+                time_since_connection.total_seconds() / 60
+            )
+
+            # If fan hasn't been seen in 15+ minutes, it's disconnected
+            if minutes_since_connection > 15:
+                _LOGGER.warning(
+                    "Fan ID: %s - API reports connected=True but "
+                    "last_connection was %.1f minutes ago. "
+                    "Overriding to connected=False",
+                    self.fan_id,
+                    minutes_since_connection,
+                )
+                self._connected = False
+            else:
+                self._connected = api_connected
+        elif api_connected and self._last_connection is None:
+            # API says connected but no last_connection timestamp - trust API
+            _LOGGER.debug(
+                "Fan ID: %s - API reports connected=True but no "
+                "last_connection timestamp available",
+                self.fan_id,
+            )
+            self._connected = api_connected
+        else:
+            # API says connected=False, trust it
+            self._connected = api_connected
         self._power = data["power"]
         self._predicted_room_temperature = data["predicted_room_temperature"]
         self._room_id = data["room_id"]

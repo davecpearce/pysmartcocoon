@@ -73,12 +73,10 @@ This tells you exactly what the cloud API is returning.
 ## What to Look For
 
 1. **Raw API `connected` value**: This is what the SmartCocoon cloud API is reporting
-
    - If this is `True` but the fan is unplugged, the issue is with the cloud API
    - If this is `False` but Home Assistant shows it as connected, the issue is in the integration
 
 2. **`last_connection` timestamp**: Check when the fan was last seen
-
    - If `last_connection` is very old (days/weeks), but `connected` is `True`, the cloud API may have stale data
 
 3. **Compare values**:

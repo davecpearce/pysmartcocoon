@@ -180,40 +180,53 @@ class SmartCocoonManager:
         _LOGGER.debug(msg)
         return "Unknown"
 
-    async def async_fan_turn_on(self, fan_id: str) -> None:
-        """Turn on fan."""
+    # These return whether the fan actually accepted the change. They
+    # previously returned None, which discarded the result and left callers
+    # unable to tell a rejected update from an applied one. Existing callers
+    # that ignore the return value are unaffected.
 
-        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ON)
+    async def async_fan_turn_on(self, fan_id: str) -> bool:
+        """Turn on fan. Returns False if the fan did not accept it."""
 
-    async def async_fan_turn_off(self, fan_id: str) -> None:
-        """Turn on fan."""
+        return await self._fans[fan_id].async_set_fan_modes(
+            fan_mode=FanMode.ON
+        )
 
-        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.OFF)
+    async def async_fan_turn_off(self, fan_id: str) -> bool:
+        """Turn off fan. Returns False if the fan did not accept it."""
 
-    async def async_set_fan_auto(self, fan_id: str) -> None:
-        """Enable auto mode on fan."""
+        return await self._fans[fan_id].async_set_fan_modes(
+            fan_mode=FanMode.OFF
+        )
 
-        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.AUTO)
+    async def async_set_fan_auto(self, fan_id: str) -> bool:
+        """Enable auto mode on fan. Returns False if not accepted."""
 
-    async def async_set_fan_eco(self, fan_id: str) -> None:
-        """Enable eco mode on fan."""
+        return await self._fans[fan_id].async_set_fan_modes(
+            fan_mode=FanMode.AUTO
+        )
 
-        await self._fans[fan_id].async_set_fan_modes(fan_mode=FanMode.ECO)
+    async def async_set_fan_eco(self, fan_id: str) -> bool:
+        """Enable eco mode on fan. Returns False if not accepted."""
+
+        return await self._fans[fan_id].async_set_fan_modes(
+            fan_mode=FanMode.ECO
+        )
 
     async def async_set_fan_modes(
         self, fan_id: str, fan_mode: FanMode, fan_speed_pct: int
-    ) -> None:
-        """Set fan mode and speed."""
+    ) -> bool:
+        """Set fan mode and speed. Returns False if not accepted."""
 
-        await self._fans[fan_id].async_set_fan_modes(
+        return await self._fans[fan_id].async_set_fan_modes(
             fan_mode=fan_mode, fan_speed_pct=fan_speed_pct
         )
 
     async def async_set_fan_speed(
         self, fan_id: str, fan_speed_pct: int
-    ) -> None:
-        """Set fan speed."""
+    ) -> bool:
+        """Set fan speed. Returns False if not accepted."""
 
-        await self._fans[fan_id].async_set_fan_modes(
+        return await self._fans[fan_id].async_set_fan_modes(
             fan_speed_pct=fan_speed_pct
         )

@@ -12,6 +12,7 @@ import logging
 
 import pytest
 
+from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.const import API_AUTH_URL, API_HEADERS
 from pysmartcocoon.redact import REDACTED, mask_identifier, redact
 
@@ -80,9 +81,7 @@ def test_nested_and_listed_secrets_are_redacted() -> None:
     payload = {
         "data": {"fans": [{"fan_id": "a", "mqtt_password": SECRET}]},
     }
-    assert (
-        redact(payload)["data"]["fans"][0]["mqtt_password"] == REDACTED
-    )
+    assert redact(payload)["data"]["fans"][0]["mqtt_password"] == REDACTED
     assert redact(payload)["data"]["fans"][0]["fan_id"] == "a"
 
 
@@ -119,8 +118,6 @@ async def test_authenticate_does_not_log_password(
     to fail -- no network here -- which is fine, because the request body is
     logged before the call is made.
     """
-    from pysmartcocoon.api import SmartCocoonAPI
-
     caplog.set_level(logging.DEBUG, logger="pysmartcocoon")
 
     api = SmartCocoonAPI(request_timeout=1)

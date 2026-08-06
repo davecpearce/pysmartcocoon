@@ -190,17 +190,23 @@ class Fan:
         return self._mqtt_password
 
     def set_speed_pct(self, fan_speed_pct: int) -> bool:
-        """Update the power of the fan"""
+        """Update the power of the fan.
 
-        if fan_speed_pct > 100:
-            _LOGGER.debug(
+        Returns False and leaves the speed unchanged if the value is outside
+        0-100. The previous implementation logged that the value was invalid
+        and then applied it anyway, so a speed of 150 became a power of 15000.
+        """
+
+        if not 0 <= fan_speed_pct <= 100:
+            _LOGGER.warning(
                 (
                     "Fan ID: %s - Fan speed of %s%% is invalid, must be "
-                    "between 0%% and 100%%"
+                    "between 0%% and 100%%. Speed not changed."
                 ),
                 self.fan_id,
                 str(fan_speed_pct),
             )
+            return False
 
         _LOGGER.debug(
             "Fan ID: %s - Updating fan speed to %s%%",
@@ -258,8 +264,10 @@ class Fan:
             return False
 
         # Update power if changed
-        if self.speed_pct != fan_speed_pct:
-            self.set_speed_pct(fan_speed_pct)
+        if self.speed_pct != fan_speed_pct and not self.set_speed_pct(
+            fan_speed_pct
+        ):
+            return False
 
         # Attempt to update the fan via API
         success = await self._async_set_fan(fan_mode)
@@ -284,12 +292,25 @@ class Fan:
             )
             return False
 
-        # Make the API call
-        await self._api.async_update_fan(
+        # Make the API call. async_request returns None for a response it
+        # could not use, without raising, so the result has to be checked --
+        # otherwise a rejected update is reported as a successful one and the
+        # caller displays a speed the fan never accepted.
+        response = await self._api.async_update_fan(
             fan_identifier=self._identifier,
             mode=self.mode,
             power=self.power,
         )
+
+        if response is None:
+            _LOGGER.warning(
+                "Fan ID: %s - API did not accept the update to mode %s, "
+                "speed %s%%",
+                self.fan_id,
+                self.mode,
+                self.speed_pct,
+            )
+            return False
 
         _LOGGER.debug(
             "Fan ID: %s - Fan Mode was set to %s, speed to %s",

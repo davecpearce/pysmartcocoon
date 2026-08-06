@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.4] - 2026-08-06
+
+### Fixed
+
+- **Retries now actually retry** - The retry loop closed its HTTP session inside the loop body, which also runs when continuing to the next attempt. When no session was supplied by the caller, attempt 1 closed it and the remaining attempts ran against a closed session, so every transient rate-limit, server error or timeout became an immediate failure. Home Assistant was unaffected, as it supplies its own session.
+- **`close()` no longer closes a session it does not own** - It closed `self._session` unconditionally, which only ever held the caller's session. Home Assistant shares one HTTP session across every integration, so a call to `close()` would have disrupted unrelated integrations. Sessions created by the library are still closed as before.
+
+### Changed
+
+- The HTTP session is now created on first use and reused for the object's lifetime rather than per request, so connections are pooled.
+
 ## [1.4.3] - 2026-08-06
 
 ### Security

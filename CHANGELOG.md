@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-08-06
+
+### Security
+
+- **Credentials no longer written to debug logs** - The debug logging added for troubleshooting dumped whole API requests and responses verbatim, which meant enabling `pysmartcocoon: debug` (as the README instructs) wrote the account password, bearer token, API client id, account email and per-fan `mqtt_password` into `home-assistant.log` in plaintext. Those logs are routinely pasted into public GitHub issues. All credentials are now replaced with `**REDACTED**` before logging, and email addresses are masked to `d***@example.com` so accounts can still be told apart.
+
+  **If you enabled debug logging for this integration, treat your SmartCocoon password as exposed** - rotate it, and check any logs you have shared publicly.
+
 ## [1.4.2] - 2025-12-29
 
 ### Fixed

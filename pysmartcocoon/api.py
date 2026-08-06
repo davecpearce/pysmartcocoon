@@ -33,6 +33,11 @@ class SmartCocoonAPI:
         request_timeout: int = DEFAULT_TIMEOUT,
     ) -> None:
         self._session = session
+        # A session passed in belongs to the caller. Only a session this
+        # class creates itself may be closed by it -- Home Assistant shares
+        # one aiohttp session across every integration, so closing that would
+        # break unrelated ones.
+        self._owns_session = False
         self._request_timeout = request_timeout
         self._authenticated = False
         self._api_client: Optional[str] = None
@@ -48,10 +53,34 @@ class SmartCocoonAPI:
     async def __aexit__(self, *_: Any) -> None:
         await self.close()
 
+    def _ensure_session(self) -> ClientSession:
+        """Return the session to use, creating one on first use if needed.
+
+        The session is kept for the lifetime of this object rather than
+        created per request, so connections are reused and -- importantly --
+        a retry does not run against a session that has already been closed.
+        """
+        if self._session is None or (
+            self._owns_session and self._session.closed
+        ):
+            self._session = ClientSession(
+                timeout=ClientTimeout(total=self._request_timeout)
+            )
+            self._owns_session = True
+        return self._session
+
     async def close(self) -> None:
-        """Close internally-owned session if present."""
-        if self._session and not self._session.closed:
-            await self._session.close()
+        """Close the session, but only if this instance created it.
+
+        A caller-supplied session is deliberately left open. Home Assistant
+        passes its shared aiohttp session here, and closing that would break
+        every other integration in the instance.
+        """
+        if self._owns_session and self._session is not None:
+            if not self._session.closed:
+                await self._session.close()
+            self._session = None
+            self._owns_session = False
 
     async def async_authenticate(self, username: str, password: str) -> bool:
         """Function to authenticate user with API"""
@@ -91,15 +120,7 @@ class SmartCocoonAPI:
             the Response object corresponding to the result of the API request.
         """
         # pylint: disable=broad-except
-        use_running_session = self._session and not self._session.closed
-
-        if use_running_session:
-            session = self._session
-        else:
-            timeout_value = ClientTimeout(total=self._request_timeout)
-            session = ClientSession(timeout=timeout_value)
-
-        assert session
+        session = self._ensure_session()
 
         data = None
 
@@ -214,9 +235,6 @@ class SmartCocoonAPI:
             except Exception as err:  # pylint: disable=broad-except
                 _LOGGER.exception("API call to SmartCocoon failed")
                 raise RequestError(str(err)) from err
-            finally:
-                if not use_running_session:
-                    await session.close()
 
         # If this request is for authorization, save auth data
         if url == API_AUTH_URL:

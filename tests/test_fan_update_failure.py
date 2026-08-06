@@ -37,7 +37,13 @@ def _api_payload(power: int = 3300, mode: str = "always_on") -> dict[str, Any]:
 
 
 class _StubAPI:
-    """Stands in for SmartCocoonAPI with a controllable update result."""
+    """Stands in for SmartCocoonAPI with a controllable update result.
+
+    The signatures mirror SmartCocoonAPI, so the arguments are deliberately
+    accepted and ignored.
+    """
+
+    # pylint: disable=unused-argument
 
     def __init__(self, update_result: Optional[dict[str, Any]]) -> None:
         self._update_result = update_result
@@ -46,14 +52,14 @@ class _StubAPI:
     async def async_update_fan(
         self, fan_identifier: int, mode: str, power: int
     ) -> Optional[dict[str, Any]]:
-        """Return the configured result, standing in for the real API call."""
+        """Return the configured result, standing in for the real call."""
         self.update_calls += 1
         return self._update_result
 
     async def async_get_fan(
         self, fan_identifier: int
     ) -> Optional[dict[str, Any]]:
-        """Return a fixed payload; the refresh path is not under test here."""
+        """Return a fixed payload; the refresh path is not under test."""
         return _api_payload()
 
 
@@ -65,7 +71,7 @@ async def _seeded_fan(api: Any) -> Fan:
 
 @pytest.mark.asyncio
 async def test_rejected_update_reports_failure() -> None:
-    """The regression test: API returns None, so this must not claim success."""
+    """Regression test: API returns None, so this must not claim success."""
     api = _StubAPI(update_result=None)
     fan = await _seeded_fan(api)
 

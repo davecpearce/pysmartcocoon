@@ -18,6 +18,7 @@ from pysmartcocoon.const import (
     DEFAULT_TIMEOUT,
 )
 from pysmartcocoon.errors import RequestError, UnauthorizedError
+from pysmartcocoon.redact import mask_identifier, redact
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -114,15 +115,18 @@ class SmartCocoonAPI:
             _LOGGER.debug("│ Method: %s", method)
             _LOGGER.debug("│ URL: %s", url)
             _LOGGER.debug(
-                "│ Headers:\n%s", json.dumps(self._headers_auth, indent=2)
+                "│ Headers:\n%s",
+                json.dumps(redact(self._headers_auth), indent=2),
             )
             if "json" in kwargs:
                 _LOGGER.debug(
                     "│ Request body (JSON):\n%s",
-                    json.dumps(kwargs["json"], indent=2),
+                    json.dumps(redact(kwargs["json"]), indent=2),
                 )
             if "data" in kwargs:
-                _LOGGER.debug("│ Request body (data): %s", kwargs["data"])
+                _LOGGER.debug(
+                    "│ Request body (data): %s", redact(kwargs["data"])
+                )
             _LOGGER.debug(
                 "└────────────────────────────────────────────────────────────"
             )
@@ -160,7 +164,9 @@ class SmartCocoonAPI:
                         _LOGGER.debug("│ Status: %s", response.status)
                         _LOGGER.debug(
                             "│ Headers:\n%s",
-                            json.dumps(dict(response.headers), indent=2),
+                            json.dumps(
+                                redact(dict(response.headers)), indent=2
+                            ),
                         )
 
                     response.raise_for_status()
@@ -169,7 +175,8 @@ class SmartCocoonAPI:
                     # Debug: Log response body
                     if _LOGGER.isEnabledFor(logging.DEBUG):
                         _LOGGER.debug(
-                            "│ Response body:\n%s", json.dumps(data, indent=2)
+                            "│ Response body:\n%s",
+                            json.dumps(redact(data), indent=2),
                         )
                         _LOGGER.debug(
                             "└────────────────────────────────────────────────────────────"  # pylint: disable=line-too-long
@@ -228,7 +235,7 @@ class SmartCocoonAPI:
                 _LOGGER.debug(
                     "│ Email: %s",
                     (
-                        data["data"]["email"]
+                        mask_identifier(data["data"]["email"])
                         if data and "data" in data
                         else "Unknown"
                     ),

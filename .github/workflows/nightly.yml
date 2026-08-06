@@ -1,0 +1,25 @@
+---
+name: Nightly
+
+# This file exists to hold the schedule, and nothing else.
+#
+# GitHub disables scheduled workflows after 60 days of repository inactivity,
+# and a disabled workflow reports no status at all rather than failing, so
+# nothing draws attention to it. When that trigger lived in tests.yaml, being
+# disabled would have taken every pull request check with it -- which is
+# precisely what happened in hacs_smartcocoon, unnoticed for ten weeks.
+#
+# Keeping the schedule isolated here bounds the damage to one nightly re-run.
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-ci:
+    name: Full CI
+    uses: ./.github/workflows/tests.yaml

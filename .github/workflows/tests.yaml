@@ -1,14 +1,22 @@
 ---
 name: Linting
 
+# Deliberately no `schedule:` trigger here. GitHub disables scheduled
+# workflows after 60 days of repository inactivity, and a disabled workflow
+# reports nothing at all rather than failing -- so it goes unnoticed. That is
+# what happened to the equivalent file in hacs_smartcocoon, which sat
+# switched off for ten weeks while pull requests merged against stale checks.
+#
+# nightly.yml holds the schedule and calls this workflow instead. If that one
+# is disabled, the loss is a nightly re-run rather than all pull request
+# validation.
 on:
   push:
     branches:
       - main
       - dev
   pull_request:
-  schedule:
-    - cron: "0 0 * * *"
+  workflow_call:
 
 env:
   DEFAULT_PYTHON: 3.13.2

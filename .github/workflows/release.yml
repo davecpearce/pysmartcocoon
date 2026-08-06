@@ -4,6 +4,12 @@ name: Release
 on:
   push:
     tags:
+      # Both spellings are matched deliberately. `bumpver update` -- the
+      # documented way to release here -- creates an unprefixed tag (1.4.3),
+      # while the 1.4.0-1.4.2 tags in this repo carry a `v`. Matching only
+      # one spelling means a release tags and pushes but never publishes,
+      # and does so silently, because no workflow run is ever created.
+      - "[0-9]+.[0-9]+.[0-9]+"
       - "v[0-9]+.[0-9]+.[0-9]+"
 
 env:

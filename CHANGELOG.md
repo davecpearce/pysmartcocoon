@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fan updates the API rejects are no longer reported as successful** - `_async_set_fan` discarded the API response and always returned success. The API can return no usable response without raising an error, so a rejected change was indistinguishable from an applied one: Home Assistant would show the fan at a speed it never accepted.
 - **Out-of-range fan speeds are rejected instead of applied** - `set_speed_pct` logged that a value outside 0-100 was invalid and then applied it anyway, so a speed of 150 became a power of 15000. It now leaves the speed unchanged and returns `False`.
 
+- **`__version__` now matches the released version** - It was hardcoded in `__init__.py` while `bumpver` only rewrote `pyproject.toml`, so it reported `1.4.2` throughout the 1.4.3 and 1.4.4 releases. `bumpver` now updates both.
+
 ### Changed
 
 - **Fan control methods on `SmartCocoonManager` now return `bool`** instead of `None`, so callers can tell an applied change from a rejected one: `async_fan_turn_on`, `async_fan_turn_off`, `async_set_fan_auto`, `async_set_fan_eco`, `async_set_fan_modes`, `async_set_fan_speed`. Callers that ignore the return value are unaffected.

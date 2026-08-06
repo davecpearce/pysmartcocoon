@@ -61,6 +61,11 @@ push = true
     'current_version = "{version}"',
     'version = "{version}"'
 ]
+# Without this, __version__ silently stops matching the released version --
+# it sat at 1.4.2 through the 1.4.3 and 1.4.4 releases.
+"pysmartcocoon/__init__.py" = [
+    '__version__ = "{version}"'
+]
 
 [tool.pytest.ini_options]
 markers = [

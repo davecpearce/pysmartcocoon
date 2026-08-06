@@ -32,10 +32,14 @@ jobs:
       - name: Run pre-commit on all files
         run: |
           pre-commit run --all-files --color=always
-      - name: Run mypy (scoped)
+      # Previously scoped to const.py and types.py only, which left the
+      # strict settings in pyproject.toml (disallow_untyped_defs and friends)
+      # unenforced across the modules that actually do the work. The whole
+      # package passes as-is, so there was nothing to gain by narrowing it.
+      - name: Run mypy
         run: |
           python -m pip install mypy
-          mypy pysmartcocoon/const.py pysmartcocoon/types.py
+          mypy pysmartcocoon
       - name: Run pytest (excluding integration tests)
         run: |
           pytest tests/ -v -k "not integration"

@@ -334,13 +334,50 @@ class Fan:
 
         return True
 
+    #: Fields the API is expected to send for every fan. Anything absent here
+    #: means the payload is not one this can safely apply.
+    REQUIRED_API_FIELDS = (
+        "id",
+        "mode",
+        "fan_on",
+        "firmware_version",
+        "is_room_estimating",
+        "connected",
+        "power",
+        "predicted_room_temperature",
+        "room_id",
+        "thermostat_vendor",
+        "mqtt_username",
+        "mqtt_password",
+    )
+
     async def async_update_api_data(
         self,
         data: dict[str, Any],
     ) -> bool:
-        """Selectively update the fan attributes with API data"""
+        """Selectively update the fan attributes with API data.
 
-        _LOGGER.debug("Fan ID: %s - In async_update_api_data", data["fan_id"])
+        Returns False without changing anything if the payload is missing
+        fields. Applying it field by field would otherwise raise partway
+        through and leave the fan holding a mix of old and new values.
+        """
+
+        missing = [
+            field for field in self.REQUIRED_API_FIELDS if field not in data
+        ]
+        if missing:
+            _LOGGER.error(
+                "Fan ID: %s - Ignoring API payload missing required "
+                "field(s): %s",
+                self.fan_id,
+                ", ".join(missing),
+            )
+            return False
+
+        _LOGGER.debug(
+            "Fan ID: %s - In async_update_api_data",
+            data.get("fan_id", self._fan_id),
+        )
 
         self._identifier = data["id"]
         self._fan_id = (
@@ -371,8 +408,10 @@ class Fan:
             type(raw_connected).__name__,
         )
 
-        # Parse last_connection to datetime when provided as string
-        last_conn = data["last_connection"]
+        # Parse last_connection to datetime when provided as string. This one
+        # is NotRequired in FanPayload, so it is fetched with a default rather
+        # than being treated as guaranteed.
+        last_conn = data.get("last_connection")
         if isinstance(last_conn, str):
             try:
                 iso_str = last_conn.replace("Z", "+00:00")
@@ -452,5 +491,4 @@ class Fan:
             )
             return False
 
-        await self.async_update_api_data(response)
-        return True
+        return await self.async_update_api_data(response)

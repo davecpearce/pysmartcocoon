@@ -149,14 +149,25 @@ class SmartCocoonManager:
 
         if response and entity in response:
             for data in response[entity]:
-                # Check to see if Fan exists in _fans
-                fan_id = data["fan_id"]
+                # One unusable entry must not cost every other fan its
+                # update -- previously a payload without "fan_id" raised
+                # here and the whole refresh was abandoned partway through.
+                fan_id = data.get("fan_id")
+                if not fan_id:
+                    _LOGGER.error(
+                        "Skipping fan entry with no fan_id in API response"
+                    )
+                    continue
 
                 if fan_id not in self._fans:
                     fan = Fan(fan_id=fan_id, api=self._api)
                     self._fans[fan_id] = fan
 
-                await self._fans[fan_id].async_update_api_data(data)
+                if not await self._fans[fan_id].async_update_api_data(data):
+                    # async_update_api_data has already logged the reason and
+                    # left the fan's previous values in place.
+                    continue
+
                 room_id = self._fans[fan_id].room_id
                 if room_id is not None:
                     room_name = await self.async_get_room_name(room_id)

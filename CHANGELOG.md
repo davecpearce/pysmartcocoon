@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2026-08-07
+
+### Fixed
+
+- **A malformed fan no longer blocks every other fan's update** - `async_update_fans` raised on the first unusable entry in the API response, abandoning the refresh partway through. Every fan after it kept stale data until a later poll happened to succeed. Unusable entries are now logged and skipped.
+- **Incomplete fan payloads are refused rather than half-applied** - Attributes were assigned one at a time as the payload was read, so a missing field raised midway and left the fan holding a mix of old and new values. Required fields are now checked first, and the payload is rejected without changing anything if any are absent.
+- **`last_connection` may be absent** - It is declared `NotRequired` in `FanPayload`, but was read as though guaranteed, so a payload legitimately omitting it raised.
+
 ## [1.4.5] - 2026-08-06
 
 ### Fixed

@@ -38,10 +38,10 @@ repos:
           - --format=custom
           - --configfile=tests/bandit.yaml
   - repo: https://github.com/PyCQA/isort
-    rev: 8.0.1
+    rev: 9.0.2
     hooks:
       - id: isort
   - repo: https://github.com/rbubley/mirrors-prettier
-    rev: v3.9.6
+    rev: v3.9.9
     hooks:
       - id: prettier

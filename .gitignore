@@ -26,3 +26,8 @@ venv.bak/
 
 # Node modules (for prettier cache)
 node_modules/
+
+# Output of scripts/dump_api_payloads.py. Redacted, but it still describes
+# a real account (rooms, schedule, equipment) -- share deliberately, never
+# by accident.
+sc-api-dump-*.json

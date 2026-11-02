@@ -46,6 +46,9 @@ class SmartCocoonAPI:
         # Make a private copy of default headers to avoid global mutation
         self._headers_auth = API_HEADERS.copy()
         self._user_id: Optional[int] = None
+        # Kept so an expired session can be renewed without the caller's help.
+        # Never logged: every request and response log goes through redact().
+        self._credentials: Optional[tuple[str, str]] = None
 
     async def __aenter__(self) -> "SmartCocoonAPI":
         return self
@@ -94,6 +97,8 @@ class SmartCocoonAPI:
 
         await self.async_request("POST", API_AUTH_URL, **request_body)
 
+        if self._authenticated:
+            self._credentials = (username, password)
         return self._authenticated
 
     def _compute_retry_delay(
@@ -110,6 +115,28 @@ class SmartCocoonAPI:
 
     # pylint: disable=too-many-branches,too-many-statements
     async def async_request(
+        self, method: str, url: str, **kwargs: Any
+    ) -> dict | None:
+        """Make a request, logging in again once if the session has expired.
+
+        A 401 used to surface as UnauthorizedError "so the caller can
+        re-authenticate", but no caller did: the manager caught it and logged
+        at debug level. That was survivable while the API was only called on
+        demand. Polled every minute, the first expired token would silently
+        end every update until Home Assistant restarted.
+        """
+        try:
+            return await self._async_request_once(method, url, **kwargs)
+        except UnauthorizedError:
+            if url == API_AUTH_URL or self._credentials is None:
+                raise
+            _LOGGER.info("SmartCocoon session expired; logging in again")
+            username, password = self._credentials
+            if not await self.async_authenticate(username, password):
+                raise
+            return await self._async_request_once(method, url, **kwargs)
+
+    async def _async_request_once(
         self, method: str, url: str, **kwargs: Any
     ) -> dict | None:
         """Make a request using token authentication.

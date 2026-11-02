@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-11-02
+
+### Added
+
+- **`SmartCocoonManager.async_refresh_fans()`** refreshes every fan in one request and returns whether it worked. `async_update_fans` swallowed failures at debug level and returned the old data, so a poller could not tell fresh state from stale. `async_update_fans` still returns the fan dict and now uses this internally.
+- **`Fan.speed_level`**, the speed step the fan is actually running at. In eco and auto modes the cloud chooses the speed itself, while `power` keeps the last manual setting. That's why the SmartCocoon app and Home Assistant showed different speeds. The scale appears to run 1–12, inferred from live data rather than documented.
+- **`scripts/dump_api_payloads.py`** fetches every endpoint, writes a redacted JSON file, and lists any keys the API sends that nothing in the library reads.
+
+### Fixed
+
+- **Expired sessions now log in again.** A 401 raised `UnauthorizedError` for the caller to handle, but no caller did. That rarely mattered while the API was called occasionally; with regular polling, the first expired token would have stopped every update until restart. `async_request` now keeps the credentials from the last successful login. On a 401 it logs in once and retries once. If that login is refused, the 401 is raised rather than retried in a loop.
+- **Temperatures are numbers.** The API sends decimals as strings (`"21.0"`), while `types.py` declared floats, so consumers that check types silently dropped them. `Fan` and `Room` now convert on read. `thermostat_vendor` is typed as the name the API actually sends, not an integer.
+- **Home addresses no longer reach debug logs.** The `client_systems` response includes a `location` block that can hold a street address and postal code, and it was logged in full at DEBUG. Those logs get pasted into public issues. `redact()` now masks street and address fields, postal and zip codes, and coordinates. City, state and country are kept.
+
 ## [1.4.6] - 2026-08-07
 
 ### Fixed

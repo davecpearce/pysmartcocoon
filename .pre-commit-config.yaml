@@ -1,5 +1,19 @@
 ---
 repos:
+  # Guard the pins below. black, isort and bandit are pinned both here as a
+  # `rev` and in requirements_test.txt, and pre-commit is what gates CI --
+  # so when the two drift, the tool judging a pull request is not the one
+  # anyone runs locally. Dependabot bumps only requirements_test.txt and the
+  # autoupdate workflow only the revs, so each would drift the pair alone.
+  - repo: local
+    hooks:
+      - id: check-tool-pins
+        name: tools pinned in two files must agree
+        entry: python scripts/check_tool_pins.py
+        language: python
+        additional_dependencies: ["pyyaml"]
+        pass_filenames: false
+        files: ^(\.pre-commit-config\.yaml|requirements_test\.txt)$
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.22.0
     hooks:

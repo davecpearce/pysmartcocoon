@@ -4,7 +4,12 @@ from typing import NotRequired, TypedDict
 
 
 class FanPayload(TypedDict):
-    """Fan payload fields returned by API."""
+    """Fan payload fields returned by API.
+
+    Checked against a live response on 2026-11-02. Decimals arrive as
+    strings, and `thermostat_vendor` is a name, not a number; the models
+    convert on read (see convert.py).
+    """
 
     id: int
     fan_id: str
@@ -15,9 +20,10 @@ class FanPayload(TypedDict):
     connected: bool
     last_connection: NotRequired[str]
     power: int
-    predicted_room_temperature: float
+    speed_level: NotRequired[int]
+    predicted_room_temperature: str
     room_id: int
-    thermostat_vendor: int
+    thermostat_vendor: str
     mqtt_username: str
     mqtt_password: str
 

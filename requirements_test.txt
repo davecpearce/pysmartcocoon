@@ -1,12 +1,12 @@
 -r requirements.txt
-bandit
-black
+bandit==1.9.4
+black==26.5.1
 build
 bumpver
-isort
+isort==9.0.2
 pip-tools
 pre-commit
-pylint
+pylint==4.1.3
 pytest
 pytest-asyncio
 python-dotenv

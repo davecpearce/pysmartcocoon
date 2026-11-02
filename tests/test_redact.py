@@ -130,3 +130,102 @@ async def test_authenticate_does_not_log_password(
 
     assert SECRET not in caplog.text
     assert REDACTED in caplog.text
+
+
+# A client_systems entry shaped like the real API's, including the street
+# address some accounts carry. The values are invented.
+STREET = "742 Evergreen Terrace"
+POSTAL = "K1A0B1"
+CLIENT_SYSTEMS = {
+    "total": 1,
+    "client_systems": [
+        {
+            "id": 101,
+            "name": "Home",
+            "location": {
+                "id": 101,
+                "street": STREET,
+                "city": "Ottawa",
+                "state": "ON",
+                "country": "CA",
+                "postal_code": POSTAL,
+            },
+        }
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "street",
+        "Street",
+        "address",
+        "address_line1",
+        "postal_code",
+        "zip",
+        "zip_code",
+        "latitude",
+        "longitude",
+        "lat",
+        "lng",
+    ],
+)
+def test_location_keys_are_redacted(key: str) -> None:
+    """Where the account holder lives is redacted, case-insensitively."""
+    assert redact({key: "somewhere"})[key] == REDACTED
+
+
+def test_coarse_location_is_kept() -> None:
+    """City, state and country stay -- region can be what a bug turns on."""
+    location = redact(CLIENT_SYSTEMS)["client_systems"][0]["location"]
+    assert location["city"] == "Ottawa"
+    assert location["state"] == "ON"
+    assert location["country"] == "CA"
+    assert location["id"] == 101
+
+
+def test_location_matching_is_exact_not_substring() -> None:
+    """Exact keys only, so unrelated fields are not swept up."""
+    payload = {"zip_enabled": True, "latency_ms": 12, "lateral": 1}
+    assert redact(payload) == payload
+
+
+@pytest.mark.asyncio
+async def test_response_body_does_not_log_home_address(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """End-to-end over the response-logging path, which no test covered.
+
+    Serves a realistic client_systems reply from a local server, requests it
+    with DEBUG enabled, and checks the emitted log rather than a return value
+    -- the log is what gets pasted into public issues.
+    """
+    from aiohttp import web  # pylint: disable=import-outside-toplevel
+    from aiohttp.test_utils import (  # pylint: disable=import-outside-toplevel
+        TestServer,
+    )
+
+    async def handler(_request: web.Request) -> web.Response:
+        return web.json_response(CLIENT_SYSTEMS)
+
+    app = web.Application()
+    app.router.add_get("/client_systems", handler)
+
+    caplog.set_level(logging.DEBUG, logger="pysmartcocoon")
+    async with TestServer(app) as server:
+        api = SmartCocoonAPI(request_timeout=5)
+        try:
+            data = await api.async_request(
+                "GET", str(server.make_url("/client_systems"))
+            )
+        finally:
+            await api.close()
+
+    # The caller still gets the real data; only the log is redacted.
+    assert data is not None
+    assert data["client_systems"][0]["location"]["postal_code"] == POSTAL
+    assert "Response body" in caplog.text
+    assert STREET not in caplog.text
+    assert POSTAL not in caplog.text
+    assert "Ottawa" in caplog.text

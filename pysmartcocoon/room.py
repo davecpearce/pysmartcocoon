@@ -2,7 +2,9 @@
 
 # pylint: disable=too-few-public-methods,too-many-instance-attributes
 
-from typing import Any
+from typing import Any, Optional
+
+from pysmartcocoon.convert import as_float
 
 
 class Room:  # pylint: disable=too-many-instance-attributes
@@ -12,13 +14,19 @@ class Room:  # pylint: disable=too-many-instance-attributes
         """Initialize."""
         self._identifier: int = data["id"]
         self._name: str = data["name"]
-        self._desired_temperature: float = data["desired_temperature"]
+        self._desired_temperature: Optional[float] = as_float(
+            data["desired_temperature"]
+        )
         self._hvac_mode: str = data["hvac_mode"]
         self._hvac_state: str = data["hvac_state"]
         self._is_estimating: bool = data["is_estimating"]
-        self._predicted_temperature: float = data["predicted_temperature"]
-        self._target_temperature: float = data["target_temperature"]
-        self._temperature: float = data["temperature"]
+        self._predicted_temperature: Optional[float] = as_float(
+            data["predicted_temperature"]
+        )
+        self._target_temperature: Optional[float] = as_float(
+            data["target_temperature"]
+        )
+        self._temperature: Optional[float] = as_float(data["temperature"])
         self._thermostat_id: int = data["thermostat_id"]
 
     @property
@@ -37,7 +45,7 @@ class Room:  # pylint: disable=too-many-instance-attributes
         return self._name
 
     @property
-    def desired_temperature(self) -> float:
+    def desired_temperature(self) -> Optional[float]:
         """Return desired temperature"""
         return self._desired_temperature
 
@@ -57,17 +65,17 @@ class Room:  # pylint: disable=too-many-instance-attributes
         return self._is_estimating
 
     @property
-    def predicted_temperature(self) -> float:
+    def predicted_temperature(self) -> Optional[float]:
         """Return predicted temperature"""
         return self._predicted_temperature
 
     @property
-    def target_temperature(self) -> float:
+    def target_temperature(self) -> Optional[float]:
         """Return target temperature"""
         return self._target_temperature
 
     @property
-    def temperature(self) -> float:
+    def temperature(self) -> Optional[float]:
         """Return temperature"""
         return self._temperature
 

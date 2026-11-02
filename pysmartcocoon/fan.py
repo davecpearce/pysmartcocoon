@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.const import FanMode
+from pysmartcocoon.convert import as_float, as_int
 from pysmartcocoon.fan_helpers import derive_mode_from_speed, resolve_speed
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
@@ -32,9 +33,10 @@ class Fan:
         self._last_connection: Optional[datetime] = None
         self._mode: Optional[str] = None
         self._power: Optional[int] = None
+        self._speed_level: Optional[int] = None
         self._predicted_room_temperature: Optional[float] = None
         self._room_id: Optional[int] = None
-        self._thermostat_vendor: Optional[int] = None
+        self._thermostat_vendor: Optional[str] = None
         self._mqtt_username: Optional[str] = None
         self._mqtt_password: Optional[str] = None
 
@@ -160,6 +162,19 @@ class Fan:
         return int(self._power / 100) if self._power is not None else 0
 
     @property
+    def speed_level(self) -> Optional[int]:
+        """Return the speed step the fan is actually running at, if reported.
+
+        Separate from `power`, which is the speed that was set. In eco and
+        auto modes the cloud picks the speed itself and reports it here,
+        while `power` keeps the last manual setting -- which is why the app
+        (showing this) and Home Assistant (showing `power`) disagreed. The
+        scale appears to run 1-12; that is inferred from two accounts, not
+        documented.
+        """
+        return self._speed_level
+
+    @property
     def predicted_room_temperature(self) -> Optional[float]:
         """Return the predicted room temperature of the fan"""
         return self._predicted_room_temperature
@@ -175,7 +190,7 @@ class Fan:
         return self._room_id
 
     @property
-    def thermostat_vendor(self) -> Optional[int]:
+    def thermostat_vendor(self) -> Optional[str]:
         """Return the thermostat vendor of the fan"""
         return self._thermostat_vendor
 
@@ -463,7 +478,12 @@ class Fan:
             # API says connected=False, trust it
             self._connected = api_connected
         self._power = data["power"]
-        self._predicted_room_temperature = data["predicted_room_temperature"]
+        # Optional: older payloads did not carry it.
+        self._speed_level = as_int(data.get("speed_level"))
+        # Sent as a decimal string ("21.0") despite the float annotation.
+        self._predicted_room_temperature = as_float(
+            data["predicted_room_temperature"]
+        )
         self._room_id = data["room_id"]
         self._thermostat_vendor = data["thermostat_vendor"]
         self._mqtt_username = data["mqtt_username"]

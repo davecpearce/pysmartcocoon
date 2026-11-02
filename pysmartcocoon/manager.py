@@ -137,43 +137,63 @@ class SmartCocoonManager:
         return self._rooms
 
     async def async_update_fans(self) -> dict[str, Fan]:
-        """Update fans data"""
+        """Update fans data.
+
+        Kept for existing callers. A failed refresh leaves the previous
+        values in place; use async_refresh_fans to find out whether it
+        worked.
+        """
+        await self.async_refresh_fans()
+        return self._fans
+
+    async def async_refresh_fans(self) -> bool:
+        """Refresh every fan from the cloud in one request.
+
+        Returns False when the request failed, in which case each fan keeps
+        its previous values. async_update_fans swallowed failures at debug
+        level, so a poller built on it could not tell fresh data from stale
+        -- which matters once Home Assistant polls rather than waiting for
+        updates that never came.
+        """
         entity = EntityType.FANS.value
         try:
             response = await self._api.async_request(
                 "GET", f"{API_URL}{entity}"
             )
         except (UnauthorizedError, RequestError) as err:
-            _LOGGER.debug("Failed to update fans: %s", err)
-            return self._fans
+            _LOGGER.warning("Failed to refresh fans: %s", err)
+            return False
 
-        if response and entity in response:
-            for data in response[entity]:
-                # One unusable entry must not cost every other fan its
-                # update -- previously a payload without "fan_id" raised
-                # here and the whole refresh was abandoned partway through.
-                fan_id = data.get("fan_id")
-                if not fan_id:
-                    _LOGGER.error(
-                        "Skipping fan entry with no fan_id in API response"
-                    )
-                    continue
+        if not response or entity not in response:
+            _LOGGER.warning("Fan refresh returned no usable data")
+            return False
 
-                if fan_id not in self._fans:
-                    fan = Fan(fan_id=fan_id, api=self._api)
-                    self._fans[fan_id] = fan
+        for data in response[entity]:
+            # One unusable entry must not cost every other fan its
+            # update -- previously a payload without "fan_id" raised
+            # here and the whole refresh was abandoned partway through.
+            fan_id = data.get("fan_id")
+            if not fan_id:
+                _LOGGER.error(
+                    "Skipping fan entry with no fan_id in API response"
+                )
+                continue
 
-                if not await self._fans[fan_id].async_update_api_data(data):
-                    # async_update_api_data has already logged the reason and
-                    # left the fan's previous values in place.
-                    continue
+            if fan_id not in self._fans:
+                fan = Fan(fan_id=fan_id, api=self._api)
+                self._fans[fan_id] = fan
 
-                room_id = self._fans[fan_id].room_id
-                if room_id is not None:
-                    room_name = await self.async_get_room_name(room_id)
-                    self._fans[fan_id].set_room_name(room_name)
+            if not await self._fans[fan_id].async_update_api_data(data):
+                # async_update_api_data has already logged the reason and
+                # left the fan's previous values in place.
+                continue
 
-        return self._fans
+            room_id = self._fans[fan_id].room_id
+            if room_id is not None:
+                room_name = await self.async_get_room_name(room_id)
+                self._fans[fan_id].set_room_name(room_name)
+
+        return True
 
     async def async_get_room_name(self, room_id: int) -> str:
         """Get room name from room"""

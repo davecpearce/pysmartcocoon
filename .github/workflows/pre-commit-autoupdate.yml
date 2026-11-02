@@ -75,6 +75,13 @@ jobs:
           print(f"{len(reverted)} pre-release rev(s) reverted")
           PY
 
+      # autoupdate moves the hook revs, but black, isort and bandit are also
+      # pinned in requirements_test.txt, and check-tool-pins fails any branch
+      # where the two disagree. Bring the requirements along so the PR this
+      # opens is not red by construction. (pyyaml comes with pre-commit.)
+      - name: Sync requirements_test.txt to the new revs
+        run: python scripts/check_tool_pins.py --fix
+
       # Not `|| true`. A hook that fails after an update is exactly what a
       # human needs to know before merging, so record it and say so in the
       # pull request rather than opening a green-looking PR over a broken
@@ -95,6 +102,8 @@ jobs:
             - Ran `pre-commit autoupdate`
             - Pre-release revs (alpha/beta/rc) were reverted to the
               previous stable pin
+            - `requirements_test.txt` synced to the new revs for tools
+              pinned in both files
             - `pre-commit run --all-files`:
               **${{ steps.hooks.outcome == 'success' && 'passed' || 'FAILED — review before merging' }}**
 

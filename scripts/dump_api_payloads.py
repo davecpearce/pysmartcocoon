@@ -58,6 +58,7 @@ MODELLED_KEYS: dict[str, frozenset[str]] = {
             "connected",
             "last_connection",
             "power",
+            "speed_level",
             "predicted_room_temperature",
             "room_id",
             "thermostat_vendor",
@@ -113,6 +114,19 @@ def summarise_keys(label: str, items: list[dict[str, Any]]) -> list[str]:
         )
 
     return lines
+
+
+def endpoint_report(name: str, response: Any) -> tuple[Any, list[str]]:
+    """Redact one endpoint's response and describe its keys.
+
+    The key report prints sample values to the terminal, so it must be built
+    from the redacted copy. It once sampled the raw response, and a fan's
+    `mqtt_password` -- nested inside `rooms` -- was printed in clear while
+    the JSON file beside it was correctly masked.
+    """
+    redacted = redact(response)
+    items = (redacted or {}).get(name) or []
+    return redacted, summarise_keys(name, items)
 
 
 def summarise_fans(fans: list[dict[str, Any]]) -> list[str]:
@@ -190,10 +204,10 @@ async def main() -> int:
                 dump["endpoints"][name] = {"error": str(err)}
                 continue
 
-            dump["endpoints"][name] = redact(response)
-            items = (response or {}).get(name) or []
+            dump["endpoints"][name], lines = endpoint_report(name, response)
+            items = (dump["endpoints"][name] or {}).get(name) or []
             _LOGGER.info("GET %-16s %d item(s)", name, len(items))
-            report.extend(summarise_keys(name, items))
+            report.extend(lines)
 
         fans = (dump["endpoints"].get("fans") or {}).get("fans") or []
         if fans:

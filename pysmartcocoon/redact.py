@@ -3,7 +3,7 @@
 This library logs whole API requests and responses at DEBUG level, and the
 README tells Home Assistant users to turn that logging on when something is
 wrong. Those logs routinely get pasted into public GitHub issues, so nothing
-written at DEBUG may contain a usable credential.
+written at DEBUG may contain a usable credential -- or where someone lives.
 
 Everything here is about what reaches a log file. None of it changes what is
 sent to the API.
@@ -35,10 +35,38 @@ _SECRET_KEY_EXACT: frozenset[str] = frozenset({"client"})
 # reason someone would want the value in the first place.
 _IDENTIFIER_KEY_EXACT: frozenset[str] = frozenset({"email", "uid"})
 
+# Where the account holder lives. The `client_systems` response carries a
+# `location` block, and has carried a full street address for some accounts
+# (pysmartcocoon once read street, city, state, country and postal_code from
+# it). Matched exactly rather than as substrings so ordinary fields are not
+# caught by accident. City, state and country are deliberately kept: alone
+# they are coarse, and region is sometimes what a bug turns on.
+_LOCATION_KEY_EXACT: frozenset[str] = frozenset(
+    {
+        "street",
+        "street_address",
+        "address",
+        "address1",
+        "address2",
+        "address_line1",
+        "address_line2",
+        "postal_code",
+        "postalcode",
+        "zip",
+        "zip_code",
+        "zipcode",
+        "latitude",
+        "longitude",
+        "lat",
+        "lng",
+        "lon",
+    }
+)
+
 
 def _is_secret(key: str) -> bool:
     lowered = key.lower()
-    if lowered in _SECRET_KEY_EXACT:
+    if lowered in _SECRET_KEY_EXACT or lowered in _LOCATION_KEY_EXACT:
         return True
     return any(part in lowered for part in _SECRET_KEY_PARTS)
 

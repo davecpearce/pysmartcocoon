@@ -143,7 +143,10 @@ class SmartCocoonManager:
         values in place; use async_refresh_fans to find out whether it
         worked.
         """
-        await self.async_refresh_fans()
+        try:
+            await self.async_refresh_fans()
+        except UnauthorizedError as err:
+            _LOGGER.warning("Failed to refresh fans: %s", err)
         return self._fans
 
     async def async_refresh_fans(self) -> bool:
@@ -154,13 +157,19 @@ class SmartCocoonManager:
         level, so a poller built on it could not tell fresh data from stale
         -- which matters once Home Assistant polls rather than waiting for
         updates that never came.
+
+        Raises UnauthorizedError when the credentials themselves are
+        rejected. By then async_request has already tried one fresh login,
+        so this means the stored password no longer works -- the caller
+        has to ask the user for a new one, and a plain False would hide
+        that behind an ordinary retryable failure.
         """
         entity = EntityType.FANS.value
         try:
             response = await self._api.async_request(
                 "GET", f"{API_URL}{entity}"
             )
-        except (UnauthorizedError, RequestError) as err:
+        except RequestError as err:
             _LOGGER.warning("Failed to refresh fans: %s", err)
             return False
 

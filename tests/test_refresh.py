@@ -137,7 +137,7 @@ async def test_refresh_reports_success() -> None:
 
 @pytest.mark.parametrize(
     "result",
-    [RequestError("down"), UnauthorizedError("401"), None, {"other": []}],
+    [RequestError("down"), None, {"other": []}],
 )
 @pytest.mark.asyncio
 async def test_refresh_reports_failure_and_keeps_values(result: Any) -> None:
@@ -152,9 +152,29 @@ async def test_refresh_reports_failure_and_keeps_values(result: Any) -> None:
 
 
 @pytest.mark.asyncio
+async def test_rejected_credentials_raise_instead_of_returning_false() -> None:
+    """A rejected login must be distinguishable from a transient failure.
+
+    Home Assistant answers the first by asking the user for a new password
+    and the second by retrying; returning False for both meant a changed
+    password just failed quietly every poll.
+    """
+    manager = _manager({"fans": [_live_fan(power=5000)]})
+    assert await manager.async_refresh_fans()
+
+    # pylint: disable=protected-access
+    manager._api = _CannedAPI(UnauthorizedError("401"))  # type: ignore
+    with pytest.raises(UnauthorizedError):
+        await manager.async_refresh_fans()
+    assert manager.fans["4125f4"].power == 5000
+
+
+@pytest.mark.asyncio
 async def test_update_fans_keeps_its_old_contract() -> None:
     """Existing callers still get the fan dict back, even on failure."""
     manager = _manager(RequestError("down"))
+    assert not await manager.async_update_fans()
+    manager = _manager(UnauthorizedError("401"))
     assert not await manager.async_update_fans()
     manager = _manager({"fans": [_live_fan()]})
     assert "4125f4" in await manager.async_update_fans()

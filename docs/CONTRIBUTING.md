@@ -1,307 +1,106 @@
 # Contributing to PySmartCocoon
 
-Thank you for your interest in contributing to PySmartCocoon! This document provides guidelines for contributing to the project.
+Bug reports, fixes and features are all welcome.
 
-## Table of Contents
+## Setting up
 
-- [Getting Started](#getting-started)
-- [Development Environment](#development-environment)
-- [Code Style](#code-style)
-- [Testing](#testing)
-- [Submitting Changes](#submitting-changes)
-- [Bug Reports](#bug-reports)
-- [Feature Requests](#feature-requests)
-- [License](#license)
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.13.2+
-- Git
-- VS Code (recommended)
-- Docker (for running GitHub Actions locally)
-
-### Fork and Clone
-
-1. Fork the repository on GitHub
-2. Clone your fork locally:
-   ```bash
-   git clone https://github.com/yourusername/pysmartcocoon.git
-   cd pysmartcocoon
-   ```
-3. Add the upstream repository:
-   ```bash
-   git remote add upstream https://github.com/davecpearce/pysmartcocoon.git
-   ```
-
-## Development Environment
-
-### Using VS Code Dev Container (Recommended)
-
-The project includes a complete development environment using VS Code Dev Containers:
-
-1. Open the project in VS Code
-2. When prompted, reopen in container
-3. The devcontainer will automatically set up all dependencies
-
-See [DEVCONTAINER_README.md](DEVCONTAINER_README.md) for detailed setup instructions.
-
-### Manual Setup
-
-If you prefer to set up the environment manually:
+You need Python 3.13.2 or later.
 
 ```bash
-# Create a virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install the package in development mode
-pip install -e .[test]
-
-# Install pre-commit hooks
+git clone https://github.com/<you>/pysmartcocoon.git
+cd pysmartcocoon
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements_test.txt && pip install -e .
 pre-commit install
 ```
 
-## Code Style
+A VS Code dev container is included as an alternative; see
+[DEVCONTAINER_README.md](DEVCONTAINER_README.md).
 
-This project uses several tools to maintain consistent code style:
+## Code style
 
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **pylint**: Code linting
-- **mypy**: Type checking
-
-### Running Code Quality Checks
-
-```bash
-# Run all checks
-pre-commit run --all-files
-
-# Run individual tools
-black .
-isort .
-pylint pysmartcocoon/
-mypy pysmartcocoon/
-```
-
-### Pre-commit Hooks
-
-Pre-commit hooks are automatically installed when you run `pre-commit install`. These hooks will run automatically on every commit to ensure code quality.
-
-To run pre-commit on all files:
+CI runs the pre-commit hooks, then mypy, then the tests. Run the same locally:
 
 ```bash
 pre-commit run --all-files
+mypy pysmartcocoon
 ```
 
-## Testing
+The hooks run black (line length 79), isort, pyupgrade, pylint, bandit and prettier. Read the hook arguments from `.pre-commit-config.yaml` rather than
+running the tools with their defaults. pylint here does **not** disable
+`unused-argument`, so stub classes in tests need an explicit
+`# pylint: disable=unused-argument`.
 
-### Running Tests
+black, isort, bandit and pylint are pinned in both `requirements_test.txt` and
+`.pre-commit-config.yaml`. The two must agree, and the
+`tools pinned in two files must agree` hook fails the build when they don't. To
+take the pre-commit versions:
 
 ```bash
-# Run all tests
-pytest
-
-# Run with verbose output
-pytest -v -s
-
-# Run with coverage
-pytest --cov=pysmartcocoon
-
-# Run specific test file
-pytest tests/test_fan_control.py -v -s
+python scripts/check_tool_pins.py --fix
 ```
 
-### Integration Tests
-
-Integration tests require valid SmartCocoon credentials:
-
-1. Copy `tests/template.env` to `tests/.env`
-2. Fill in your credentials:
-   ```bash
-   USERNAME="your_email@example.com"
-   PASSWORD="your_password"
-   FAN_ID="your_fan_id"
-   ```
-3. Set the integration test flag:
-   ```bash
-   export RUN_INTEGRATION=1
-   ```
-4. Run integration tests:
-   ```bash
-   pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
-   ```
-
-### Debug Logging Tests
-
-To test debug logging functionality:
+## Tests
 
 ```bash
-# Run the comprehensive test script
-python tests/test_smoke_test.py
-
-# Run specific debug test
-pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
+pytest -m "not integration"
 ```
 
-## Submitting Changes
+This is what CI runs. Every change should come with a test, and a fix should come with
+a test that **fails without the fix**. Stash the source change and check that the test
+goes red.
 
-### Creating a Pull Request
-
-1. **Create a feature branch**:
-
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-
-2. **Make your changes**:
-
-   - Write your code following the style guidelines
-   - Add tests for new functionality
-   - Update documentation if needed
-
-3. **Test your changes**:
-
-   ```bash
-   # Run all tests
-   pytest
-
-   # Run code quality checks
-   pre-commit run --all-files
-   ```
-
-4. **Commit your changes**:
-
-   ```bash
-   git add .
-   git commit -m "Add your descriptive commit message"
-   ```
-
-5. **Push to your fork**:
-
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-
-6. **Create a Pull Request**:
-   - Go to your fork on GitHub
-   - Click "New Pull Request"
-   - Select your feature branch
-   - Fill out the PR template
-
-### Pull Request Guidelines
-
-- **Clear title**: Use a descriptive title
-- **Description**: Explain what changes you made and why
-- **Tests**: Ensure all tests pass
-- **Documentation**: Update documentation if needed
-- **Breaking changes**: Clearly mark any breaking changes
-
-## Bug Reports
-
-### Before Reporting
-
-1. Check if the issue has already been reported
-2. Try the latest version
-3. Enable debug logging to gather more information
-
-### Reporting a Bug
-
-Use GitHub's [issue tracker](https://github.com/davecpearce/pysmartcocoon/issues) to report bugs.
-
-**Great Bug Reports** include:
-
-- **Summary**: Brief description of the issue
-- **Steps to reproduce**: Detailed steps to reproduce the bug
-- **Expected behavior**: What you expected to happen
-- **Actual behavior**: What actually happened
-- **Environment**: Python version, OS, library version
-- **Debug logs**: Include relevant debug output (see [DEBUG_GUIDE.md](DEBUG_GUIDE.md))
-- **Code sample**: Minimal code that reproduces the issue
-
-### Example Bug Report
-
-```markdown
-## Bug Report
-
-**Summary**: Fan control fails with authentication error
-
-**Steps to reproduce**:
-
-1. Install pysmartcocoon
-2. Set up credentials in .env file
-3. Run: `python tests/test_smoke_test.py`
-4. See authentication error
-
-**Expected behavior**: Should authenticate successfully
-
-**Actual behavior**: Gets KeyError: 'access-token'
-
-**Environment**:
-
-- Python: 3.13.2
-- OS: Ubuntu 22.04
-- pysmartcocoon: 0.1.0
-
-**Debug logs**:
-[Include relevant debug output here]
-```
-
-## Feature Requests
-
-### Before Requesting
-
-1. Check if the feature has already been requested
-2. Consider if it fits the project's scope
-3. Think about the implementation approach
-
-### Requesting a Feature
-
-Use GitHub's [issue tracker](https://github.com/davecpearce/pysmartcocoon/issues) with the "enhancement" label.
-
-**Good Feature Requests** include:
-
-- **Clear description**: What you want to achieve
-- **Use case**: Why this feature would be useful
-- **Proposed solution**: How you think it should work
-- **Alternatives**: Other approaches you've considered
-
-## Code Review Process
-
-1. **Automated checks**: All PRs must pass automated tests and code quality checks
-2. **Manual review**: A maintainer will review your code
-3. **Feedback**: Address any feedback from reviewers
-4. **Merge**: Once approved, your changes will be merged
-
-## Development Workflow
-
-### Running GitHub Actions Locally
-
-You can run the same checks that run in GitHub Actions locally:
+Integration tests log in to a real account and change real fans. They are skipped
+unless you opt in:
 
 ```bash
-# Run the tests workflow
-./scripts/run-github-actions.sh tests
-
-# List available workflows
-./scripts/run-github-actions.sh list
+cp tests/template.env tests/.env    # USERNAME, PASSWORD, FAN_ID
+RUN_INTEGRATION=1 pytest -m integration -v -s
 ```
 
-### Debugging
+### Rules that must not regress
 
-For debugging issues, see the [Debug Guide](DEBUG_GUIDE.md) for comprehensive information about debug logging.
+- **Credentials never reach logs.** Every log line that writes request or response
+  data must go through `redact()` in `pysmartcocoon/redact.py`. Tests check captured
+  log output, not just return values.
+- **Never close a session you did not create.** Home Assistant passes in a shared
+  session.
+- **Fan control methods return `bool`.** Don't discard the result anywhere in the
+  chain, or a rejected command looks like it worked.
+- **Never connect to the MQTT broker with a fan's `mqtt_username`/`mqtt_password`.**
+  They belong to the fan, and using them knocks the real fan offline.
+
+## Pull requests
+
+1. Branch from `main`.
+2. Add tests, and update the README or `CHANGELOG.md` (under a new heading) if users
+   would notice the change.
+3. Run `pre-commit run --all-files` and `pytest -m "not integration"`.
+4. Open the pull request. `main` is protected, and branches must be up to date
+   before merging.
+
+## Releasing
+
+Maintainers only. Publishing is automated through PyPI Trusted Publishing; there is
+no API token.
+
+1. Add the release to `CHANGELOG.md`.
+2. Run `bumpver update --patch` (or `--minor`). This updates `pyproject.toml` and
+   `pysmartcocoon/__init__.py`, then commits, tags and pushes.
+3. The `release.yml` workflow builds, checks and publishes the tag. It refuses to
+   publish if the tag and `pyproject.toml` disagree.
+
+A release reaches Home Assistant users only after
+[ha-smartcocoon](https://github.com/davecpearce/ha-smartcocoon) updates its pin in
+`manifest.json` and `requirements.txt` and makes its own release.
+
+## Reporting bugs
+
+Open an [issue](https://github.com/davecpearce/pysmartcocoon/issues). Include the
+library version, what you expected, what happened, and debug logs (see the
+[Debug Guide](DEBUG_GUIDE.md)). If you use Home Assistant, report it on
+[ha-smartcocoon](https://github.com/davecpearce/ha-smartcocoon/issues) instead.
 
 ## License
 
-By contributing to this project, you agree that your contributions will be licensed under the [MIT License](LICENSE.md).
-
-## Questions?
-
-If you have questions about contributing, feel free to:
-
-- Open an issue with the "question" label
-- Check the [Debug Guide](DEBUG_GUIDE.md) for troubleshooting
-- Review the [Development Guide](DEVCONTAINER_README.md) for setup help
-
-Thank you for contributing to PySmartCocoon! 🎉
+Contributions are licensed under the [MIT License](../LICENSE.md).

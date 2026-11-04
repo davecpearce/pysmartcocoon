@@ -54,7 +54,8 @@ logger:
     custom_components.smartcocoon: debug
 ```
 
-2. Restart Home Assistant
+2. Restart Home Assistant (or use **Enable debug logging** on the integration's page,
+   which covers `pysmartcocoon` only)
 
 3. Check the logs - you'll see:
    - Raw API responses with the `connected` value
@@ -76,6 +77,7 @@ This tells you exactly what the cloud API is returning.
 
    - If this is `True` but the fan is unplugged, the issue is with the cloud API
    - If this is `False` but Home Assistant shows it as connected, the issue is in the integration
+   - If this is `True` but the library reports `False`, check `last_connection`: see below
 
 2. **`last_connection` timestamp**: Check when the fan was last seen
 
@@ -83,22 +85,31 @@ This tells you exactly what the cloud API is returning.
 
 3. **Compare values**:
    - Raw API `connected` vs pysmartcocoon `connected` property
-   - They should match - if they don't, there's a bug in pysmartcocoon
+   - They match unless `last_connection` is more than 15 minutes old (see below)
 
-## Understanding the Code
+## How the library decides
 
-The `connected` status is set directly from the API response in `fan.py` line 344:
+`connected` starts as the cloud's value, with one correction. The cloud has been seen
+reporting `connected: true` for fans unplugged days earlier. So if the cloud says
+`true` but `last_connection` is more than 15 minutes old, pysmartcocoon reports
+`connected = False` and logs a warning:
 
-```python
-self._connected = data["connected"]
+```text
+Fan ID: XXX - API reports connected=True but last_connection was 42.0 minutes ago. Overriding to connected=False
 ```
 
-There's no transformation - pysmartcocoon reports exactly what the cloud API returns.
+The code is in `Fan.async_update_api_data` in `pysmartcocoon/fan.py`.
 
 ## Expected Behavior
 
 - **Fan plugged in and online**: `connected = True`, recent `last_connection`
-- **Fan unplugged**: `connected = False`, `last_connection` may be old or None
+- **Fan unplugged**: `connected = False`, even if the cloud still says `true`, once
+  `last_connection` is more than 15 minutes old
 - **Fan offline but plugged in**: `connected = False`, recent `last_connection`
 
-If you see `connected = True` for an unplugged fan, the SmartCocoon cloud API is reporting incorrect data.
+Home Assistant polls every 60 seconds, so a fan that comes back online shows as
+available again within about a minute.
+
+**Never test connectivity by connecting to MQTT with a fan's own `mqtt_username` and
+`mqtt_password`.** The broker accepts the login, takes over the fan's session, and the
+real fan goes offline until it reconnects.

@@ -66,36 +66,22 @@ act --list
 # Run pre-commit on all files
 pre-commit run --all-files
 
-# Run individual tools
-black .
-isort .
-pylint pysmartcocoon/
-mypy pysmartcocoon/const.py pysmartcocoon/types.py
+# Type checking (CI runs this separately from pre-commit)
+mypy pysmartcocoon
 ```
 
 ### 2. Testing
 
 ```bash
-# Run all tests
-pytest
+# Unit tests, as CI runs them
+pytest -m "not integration"
 
-# Run with coverage
-pytest --cov=pysmartcocoon
-
-# Run integration tests (requires credentials)
-export RUN_INTEGRATION=1
-pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
+# Integration tests: log in to your real account and change real fans.
+# Fill in tests/.env from tests/template.env first.
+RUN_INTEGRATION=1 pytest -m integration -v -s
 ```
 
-### 3. Debug Logging Testing
-
-```bash
-# Run the comprehensive test script
-python tests/test_smoke_test.py
-
-# Run specific debug test
-pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
-```
+See the [Debug Guide](DEBUG_GUIDE.md) for debug logging.
 
 ## 📁 Project Structure
 
@@ -105,12 +91,12 @@ pysmartcocoon/
 │   ├── Dockerfile          # Container definition
 │   └── devcontainer.json   # VS Code settings
 ├── .github/workflows/       # GitHub Actions workflows
-│   └── tests.yaml          # Main CI workflow
+│   ├── tests.yaml          # CI: pre-commit, mypy, pytest
+│   └── release.yml         # Publishes tagged releases to PyPI
 ├── pysmartcocoon/          # Main package code
 ├── tests/                  # Test files
 ├── scripts/                # Development utility scripts
-│   ├── run-github-actions.sh   # Helper script for local GitHub Actions
-│   └── run-local-checks.sh     # Manual local checks script
+│   └── ...                 # See scripts/README.md
 └── requirements*.txt       # Python dependencies
 ```
 
@@ -124,7 +110,7 @@ pysmartcocoon/
 
 ### Development Issues
 
-- **Missing dependencies**: Run `pip install -e .[test]` to install all dependencies
+- **Missing dependencies**: Run `pip install -r requirements_test.txt && pip install -e .`
 - **Pre-commit fails**: Run `pre-commit install` to set up git hooks
 - **Type checking errors**: Check mypy configuration in pyproject.toml
 - **Pre-commit Node.js errors**: The container includes `libatomic1` for Node.js compatibility

@@ -12,194 +12,136 @@
 
 ![logo](logo.png)
 
-A Python library for controlling [SmartCocoon smart vents](https://mysmartcocoon.com/) with comprehensive debug logging and Home Assistant integration support.
+A Python library for the [SmartCocoon](https://mysmartcocoon.com/) cloud API. It is the
+library behind the [SmartCocoon integration for Home Assistant](https://github.com/davecpearce/ha-smartcocoon),
+and can be used on its own from any async Python code.
 
-## Table of Contents
+This is not an official SmartCocoon API. It talks to the same cloud service as the
+SmartCocoon app, which is undocumented and can change without notice.
 
-- [Overview](#overview)
+## Contents
+
 - [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Features](#features)
-- [Usage Examples](#usage-examples)
-- [Home Assistant Integration](#home-assistant-integration)
-- [Debug Logging](#debug-logging)
+- [Quick start](#quick-start)
+- [What the library gives you](#what-the-library-gives-you)
+- [Keeping state current](#keeping-state-current)
+- [Errors](#errors)
+- [Debug logging](#debug-logging)
 - [Development](#development)
 - [Documentation](#documentation)
-- [Contributing](#contributing)
-
-## Overview
-
-This library provides a Python interface to the SmartCocoon cloud service, allowing you to control smart vents programmatically. It's designed primarily for Home Assistant integration but can be used independently for any Python project.
-
-### Status
-
-This is not an official API from SmartCocoon and is in active development. The library is stable for basic operations but may have breaking changes as the API evolves.
-
-### Supported Devices
-
-- SmartCocoon Smart Vents (all models)
 
 ## Installation
-
-### From PyPI (Recommended)
 
 ```bash
 pip install pysmartcocoon
 ```
 
-### From Source
+Requires Python 3.13.2 or later.
 
-```bash
-git clone https://github.com/davecpearce/pysmartcocoon.git
-cd pysmartcocoon
-pip install -e .
-```
-
-### For Development
-
-```bash
-git clone https://github.com/davecpearce/pysmartcocoon.git
-cd pysmartcocoon
-pip install -e .[test]
-```
-
-## Quick Start
+## Quick start
 
 ```python
 import asyncio
+
+import aiohttp
+
 from pysmartcocoon import SmartCocoonManager
+from pysmartcocoon.const import FanMode
 
-async def main():
-    # Initialize the manager
-    manager = SmartCocoonManager()
 
-    # Authenticate with your SmartCocoon account
-    await manager.async_start_services(
-        username="your_email@example.com",
-        password="your_password"
-    )
+async def main() -> None:
+    async with aiohttp.ClientSession() as session:
+        manager = SmartCocoonManager(session)
 
-    # Update data from the API
-    await manager.async_update_data()
+        # Logs in and loads locations, thermostats, rooms and fans.
+        if not await manager.async_start_services("you@example.com", "password"):
+            raise SystemExit("Login failed")
 
-    # Access your fans
-    for fan_id, fan in manager.fans.items():
-        print(f"Fan {fan_id}: {fan.name} - {fan.mode}")
+        for fan_id, fan in manager.fans.items():
+            print(fan_id, fan.room_name, fan.mode, f"{fan.speed_pct}%")
 
-        # Control the fan
-        await fan.async_set_fan_mode("auto")
-        await fan.async_set_fan_speed(50)  # 50% speed
+        fan_id = next(iter(manager.fans))
+        # Every control method returns False if SmartCocoon did not accept it.
+        if not await manager.async_set_fan_speed(fan_id, 50):
+            print("Speed change was not accepted")
+        await manager.async_set_fan_modes(fan_id, FanMode.ECO, 50)
 
-    # Clean up
-    await manager._api.close()
 
-# Run the example
 asyncio.run(main())
 ```
 
-## Features
+Pass your own `aiohttp.ClientSession` when you have one. The library never closes a
+session it did not create, because Home Assistant shares one session across every
+integration. If you pass none, the library creates its own.
 
-### Core Functionality
+## What the library gives you
 
-- **Cloud Integration**: Connect to SmartCocoon cloud service
-- **Device Discovery**: Automatically discover and configure fans
-- **Fan Control**: Complete control over fan operations
-- **Real-time Updates**: Get current fan status and settings
-- **Error Handling**: Robust error handling and retry logic
+`SmartCocoonManager` is the entry point. After `async_start_services()` it holds
+`locations`, `thermostats`, `rooms` and `fans`, each a dict keyed by ID.
 
-### Fan Control Capabilities
+**Controlling a fan**: all of these take a `fan_id` and return `bool`:
 
-- **Power Control**: Turn fans on/off
-- **Speed Control**: Set fan speed (0-100%)
-- **Mode Control**:
-  - `auto` - Automatic mode based on temperature
-  - `eco` - Energy-efficient mode
-  - `always_on` - Always running
-  - `always_off` - Always off
-- **Status Monitoring**: Real-time fan status and connection state
+| Method                                   | Effect                                              |
+| ---------------------------------------- | --------------------------------------------------- |
+| `async_fan_turn_on(fan_id)`              | Always on (`FanMode.ON`)                            |
+| `async_fan_turn_off(fan_id)`             | Always off (`FanMode.OFF`)                          |
+| `async_set_fan_auto(fan_id)`             | Auto mode, configured in the SmartCocoon app        |
+| `async_set_fan_eco(fan_id)`              | Eco mode                                            |
+| `async_set_fan_speed(fan_id, pct)`       | Speed, 0–100. Values outside that range are refused |
+| `async_set_fan_modes(fan_id, mode, pct)` | Mode and speed together                             |
 
-### Advanced Features
+**Reading a fan**: the main `Fan` properties:
 
-- **Debug Logging**: Comprehensive debug output for troubleshooting
-- **Type Hints**: Full type annotation support
-- **Async Support**: Built for async/await patterns
-- **Home Assistant Ready**: Designed for seamless HA integration
+| Property                                                        | Meaning                                                                                                                                                                                    |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mode`                                                          | `auto`, `eco`, `always_on` or `always_off`                                                                                                                                                 |
+| `fan_on`                                                        | Whether the fan is currently running                                                                                                                                                       |
+| `speed_pct` / `power`                                           | The **manual** speed setting, as a percentage / raw value (×100)                                                                                                                           |
+| `speed_level`                                                   | The speed the fan is **actually** running at, 1–12. In eco and auto modes the cloud picks the speed itself, so this differs from `speed_pct`. The SmartCocoon app shows `speed_level / 12` |
+| `connected`, `last_connection`                                  | Cloud connection state. A fan silent for more than 15 minutes is reported as disconnected even if the cloud still says connected                                                           |
+| `predicted_room_temperature`, `is_room_estimating`              | SmartCocoon's room temperature estimate                                                                                                                                                    |
+| `room_id`, `room_name`, `firmware_version`, `thermostat_vendor` | Descriptive details                                                                                                                                                                        |
 
-## Usage Examples
+The 1–12 range of `speed_level` is inferred from live data, not documented.
 
-### Basic Fan Control
+## Keeping state current
 
-```python
-import asyncio
-from pysmartcocoon import SmartCocoonManager
-
-async def control_fan():
-    manager = SmartCocoonManager()
-
-    try:
-        # Authenticate
-        await manager.async_start_services("user@example.com", "password")
-
-        # Get fan data
-        await manager.async_update_data()
-
-        # Find a specific fan
-        fan = next(iter(manager.fans.values()))
-
-        # Turn on and set to auto mode
-        await fan.async_set_fan_mode("auto")
-        await fan.async_set_fan_speed(75)
-
-        print(f"Fan {fan.name} is now {fan.mode} at {fan.speed_pct}%")
-
-    finally:
-        await manager._api.close()
-
-asyncio.run(control_fan())
-```
-
-### Monitoring Fan Status
+The API does not push changes to clients, so poll. `async_refresh_fans()` refreshes
+every fan in one request and returns whether it worked:
 
 ```python
-async def monitor_fans():
-    manager = SmartCocoonManager()
-
-    try:
-        await manager.async_start_services("user@example.com", "password")
-
-        while True:
-            await manager.async_update_data()
-
-            for fan_id, fan in manager.fans.items():
-                status = "🟢 Connected" if fan.connected else "🔴 Disconnected"
-                print(f"{fan.name}: {status} - {fan.mode} at {fan.speed_pct}%")
-
-            await asyncio.sleep(30)  # Check every 30 seconds
-
-    finally:
-        await manager._api.close()
+while True:
+    if not await manager.async_refresh_fans():
+        print("Refresh failed; fans keep their previous values")
+    await asyncio.sleep(60)
 ```
 
-## Home Assistant Integration
+Home Assistant polls this way every 60 seconds. `async_update_fans()` does the same
+refresh but returns the fan dict and swallows every failure, so you cannot tell fresh
+data from stale with it.
 
-### Installation
+Each fan also carries `mqtt_username` and `mqtt_password`. **Do not connect to the
+SmartCocoon broker with them.** They are the fan's own identity: connecting with them
+takes over the fan's session, and the real fan drops offline until it reconnects.
 
-1. Copy the `custom_components/smartcocoon` folder to your Home Assistant `custom_components` directory
-2. Restart Home Assistant
-3. Add the integration through the UI
+## Errors
 
-### Configuration
+All errors derive from `pysmartcocoon.errors.SmartCocoonError`.
 
-```yaml
-# configuration.yaml
-smartcocoon:
-  username: "your_email@example.com"
-  password: "your_password"
-```
+- **`UnauthorizedError`**: SmartCocoon rejected the credentials. Expired sessions are
+  handled for you: on a 401 the library logs in again once and retries the request.
+  You only see this error when that fresh login is refused too, which normally means
+  the password changed. `async_refresh_fans()` raises it so you can ask for a new
+  password; it returns `False` for every other failure.
+- **`RequestError`**: network failures, timeouts and server errors, after up to three
+  attempts with backoff. Rate limiting honours `Retry-After`.
 
-### Debug Logging in Home Assistant
+## Debug logging
 
-Add to your `configuration.yaml`:
+Enable the `pysmartcocoon` logger at `DEBUG` to log every API request and response.
+Passwords, tokens, MQTT credentials and your home address are masked before they are
+logged, and email addresses are partly masked, so the output is safe to attach to an
+issue. In Home Assistant:
 
 ```yaml
 logger:
@@ -207,116 +149,46 @@ logger:
     pysmartcocoon: debug
 ```
 
-For detailed debug information, see the [Debug Guide](docs/DEBUG_GUIDE.md).
-
-## Debug Logging
-
-The library includes comprehensive debug logging to help troubleshoot issues:
-
-```python
-import logging
-
-# Enable debug logging
-logging.basicConfig(level=logging.DEBUG)
-
-# Your code here - debug output will be shown
-```
-
-Debug output includes:
-
-- API requests and responses
-- Authentication details
-- Fan control operations
-- Error information
-
-See the [Debug Guide](docs/DEBUG_GUIDE.md) for complete documentation.
+To see every field the API sends, including ones the library doesn't read yet, run
+[`scripts/dump_api_payloads.py`](scripts/README.md#dump_api_payloadspy). See the
+[Debug Guide](docs/DEBUG_GUIDE.md) for more.
 
 ## Development
 
-### Prerequisites
-
-- Python 3.13.2+
-- Git
-- Docker (for running GitHub Actions locally)
-
-### Development Environment
-
-This project includes a complete development environment using VS Code Dev Containers:
-
-1. Open the project in VS Code
-2. When prompted, reopen in container
-3. The devcontainer will automatically set up all dependencies
-
-See [docs/DEVCONTAINER_README.md](docs/DEVCONTAINER_README.md) for detailed setup instructions.
-
-### Running Tests
-
 ```bash
-# Run all tests
-pytest
+git clone https://github.com/davecpearce/pysmartcocoon.git
+cd pysmartcocoon
+pip install -r requirements_test.txt && pip install -e .
 
-# Run with debug output
-pytest -v -s
-
-# Run integration tests (requires credentials)
-export RUN_INTEGRATION=1
-pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
+pytest -m "not integration"   # integration tests use your real account
+mypy pysmartcocoon
+pre-commit run --all-files    # the same lint gate CI runs
 ```
 
-### Code Quality
-
-The project uses several tools to maintain code quality:
-
-- **Black**: Code formatting
-- **isort**: Import sorting
-- **pylint**: Code linting
-- **mypy**: Type checking
-- **pre-commit**: Git hooks
-
-Run all checks:
-
-```bash
-pre-commit run --all-files
-```
+A VS Code dev container is included; see
+[docs/DEVCONTAINER_README.md](docs/DEVCONTAINER_README.md). Releases are published to
+PyPI automatically when a version tag is pushed; see
+[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md#releasing).
 
 ## Documentation
 
-- [📚 Complete Documentation](docs/DOCS.md) - Comprehensive documentation index
-- [🐛 Debug Guide](docs/DEBUG_GUIDE.md) - Debug logging and troubleshooting
-- [🛠️ Development Guide](docs/DEVCONTAINER_README.md) - Development environment setup
-- [🤝 Contributing Guide](docs/CONTRIBUTING.md) - How to contribute to the project
-- [📜 Development Scripts](scripts/README.md) - Utility scripts for development
-
-## Contributing
-
-Contributions are welcome! Please see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
-
-### Quick Contribution Checklist
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests and code quality checks
-5. Submit a pull request
-
-## Work to do
-
-- [ ] MQTT integration for real-time updates
-- [ ] Device discovery implementation
-- [ ] WebSocket support for live updates
-- [ ] Additional fan control features
-- [ ] Performance optimizations
+- [CHANGELOG.md](CHANGELOG.md): what changed in each release
+- [Debug Guide](docs/DEBUG_GUIDE.md): debug logging and troubleshooting
+- [Debugging fan connection status](DEBUG_FAN_CONNECTION.md)
+- [Contributing](docs/CONTRIBUTING.md): code style, tests and releases
+- [Dev container](docs/DEVCONTAINER_README.md)
+- [Scripts](scripts/README.md)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.md) file for details.
+MIT. See [LICENSE.md](LICENSE.md).
 
 [black]: https://github.com/psf/black
 [black-shield]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
 [buymecoffee]: https://www.buymeacoffee.com/davepearce
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
 [commits-shield]: https://img.shields.io/github/commit-activity/y/davecpearce/pysmartcocoon.svg?style=for-the-badge
-[commits]: https://github.com/davecpearce/pymywatertoronto/commits/main
+[commits]: https://github.com/davecpearce/pysmartcocoon/commits/main
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
 [forum]: https://community.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/davecpearce/pysmartcocoon.svg?style=for-the-badge

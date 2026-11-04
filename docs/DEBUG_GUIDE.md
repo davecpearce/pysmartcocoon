@@ -1,244 +1,130 @@
 # Debug Logging Guide
 
-This comprehensive guide explains how to enable and use debug logging for the PySmartCocoon library in both development and Home Assistant environments.
+How to turn on debug logging for pysmartcocoon, what it shows, and what it hides.
 
-## Table of Contents
+## What gets logged
 
-- [Overview](#overview)
-- [Development Testing](#development-testing)
-- [Home Assistant Integration](#home-assistant-integration)
-- [Debug Output Examples](#debug-output-examples)
-- [Troubleshooting](#troubleshooting)
-- [Performance Considerations](#performance-considerations)
+With the `pysmartcocoon` logger at `DEBUG`, every API call logs its method, URL, headers
+and request body, followed by the response status, headers and body. Fan updates log
+the mode and speed being sent.
 
-## Overview
+**Credentials and your address are masked before anything is written.** This matters
+because these logs end up pasted into public GitHub issues.
 
-Debug logging provides detailed information about API requests, responses, and internal operations. This is essential for troubleshooting integration issues and understanding how the library interacts with the SmartCocoon API.
+| Masked completely (`**REDACTED**`)                 | Partly masked                                          | Kept                           |
+| -------------------------------------------------- | ------------------------------------------------------ | ------------------------------ |
+| password, access token, client ID, `mqtt_password` | email addresses (`y***@example.com`), the `uid` header | city, state, country           |
+| street address, postal or zip code, coordinates    |                                                        | room, fan and thermostat names |
 
-### What Debug Logging Shows
+Room names and the equipment in your home are still visible, so read a log before
+posting it.
 
-- **API Requests**: Method, URL, headers, and request body
-- **API Responses**: Status code, response headers, and response body
-- **Authentication**: User details and token information
-- **Fan Operations**: Mode changes, speed adjustments, and status updates
-- **Error Details**: Comprehensive error information for troubleshooting
+## Home Assistant
 
-## Development Testing
+The quickest way is **Settings → Devices & services → SmartCocoon → ⋮ → Enable debug
+logging**. Reproduce the problem, then choose **Disable debug logging**, and Home
+Assistant downloads the log. This toggle covers the library (`pysmartcocoon`) only.
 
-### Prerequisites
-
-1. **Set up environment variables**:
-
-   ```bash
-   # Copy the template and fill in your credentials
-   cp tests/template.env tests/.env
-   # Edit tests/.env with your actual credentials
-   ```
-
-2. **Set the integration test flag**:
-   ```bash
-   export RUN_INTEGRATION=1
-   ```
-
-### Testing Methods
-
-#### Method 1: Using the Smoke Test Script (Recommended)
-
-```bash
-# Run the smoke test with debug output
-python tests/test_smoke_test.py
-```
-
-This will:
-
-- Test authentication with detailed debug output
-- Test all API calls (locations, rooms, thermostats, fans) with debug output
-- Show comprehensive results summary
-- Demonstrate the full async_update_data() functionality
-
-#### Method 2: Using pytest
-
-```bash
-# Run just the debug logging test
-pytest tests/test_fan_control.py::test_integration_debug_logging -v -s
-
-# Run all fan control tests (includes debug test)
-pytest tests/test_fan_control.py -v -s
-
-# Run all tests with debug output
-pytest -v -s
-```
-
-#### Method 3: Manual Execution
-
-```bash
-# Run the test file directly
-python tests/test_integration.py
-```
-
-### Test Functions
-
-#### `test_integration_debug_logging()`
-
-- **Purpose**: Specifically tests debug logging functionality
-- **What it does**:
-  - Creates a SmartCocoonManager
-  - Attempts authentication (triggers debug logging)
-  - Retrieves fan data (triggers more debug logging)
-  - Provides guidance on what debug output to expect
-
-#### Enhanced Existing Tests
-
-- All existing integration tests now benefit from debug logging
-- The `logging.basicConfig(level=logging.DEBUG)` ensures debug output is shown
-
-## Home Assistant Integration
-
-### Method 1: Using Home Assistant Logger Integration
-
-Add this to your `configuration.yaml`:
+To include the integration's own logs as well, or to keep debug logging on across
+restarts, add this to `configuration.yaml` and restart:
 
 ```yaml
 logger:
   default: info
   logs:
     pysmartcocoon: debug
-    custom_components.smartcocoon: debug # if using as custom component
+    custom_components.smartcocoon: debug
 ```
 
-### Method 2: Using Home Assistant Developer Tools
-
-1. Go to **Settings** → **System** → **Logs**
-2. Click **Load Full Home Assistant Log**
-3. In the filter box, enter: `pysmartcocoon`
-4. Set the log level to **DEBUG**
-
-### Method 3: Using Logger Service
-
-You can also control logging dynamically using the logger service:
+You can also change the level without restarting:
 
 ```yaml
-# In an automation or script
-service: logger.set_level
+action: logger.set_level
 data:
   pysmartcocoon: debug
 ```
 
-### Disabling Debug Logging in Home Assistant
+Turn it back off when you are done. Each poll, every 60 seconds, logs the full fan
+payload, so the log grows quickly.
 
-To disable debug logging, either:
+## Standalone Python
 
-1. Remove the logger configuration from `configuration.yaml`
-2. Set the log level back to `info` or `warning`
-3. Use the logger service: `service: logger.set_level` with `pysmartcocoon: info`
+```python
+import logging
 
-## Debug Output Examples
-
-### Development Environment
-
-When debug logging is enabled in development, you'll see output like:
-
-```
-2024-01-15 10:30:15 DEBUG [pysmartcocoon.api] ┌─ API REQUEST ──────────────────────────────────────────────
-2024-01-15 10:30:15 DEBUG [pysmartcocoon.api] │ Method: POST
-2024-01-15 10:30:15 DEBUG [pysmartcocoon.api] │ URL: https://app.mysmartcocoon.com/api/auth/sign_in
-2024-01-15 10:30:15 DEBUG [pysmartcocoon.api] │ Headers: {'Content-Type': 'application/json', 'User-Agent': '...'}
-2024-01-15 10:30:15 DEBUG [pysmartcocoon.api] │ Request body (JSON): {'email': 'user@example.com', 'password': 'password'}
-2024-01-15 10:30:15 DEBUG [pysmartcocoon.api] └─────────────────────────────────────────────────────────────
-
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] ┌─ API RESPONSE ─────────────────────────────────────────────
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] │ Status: 200
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] │ Headers: {'access-token': '...', 'client': '...', 'uid': '...'}
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] │ Response body: {'data': {'id': 123, 'email': 'user@example.com', ...}}
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] └────────────────────────────────────────────────────────────
-
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] ┌─ AUTHENTICATION SUCCESS ────────────────────────────────
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] │ User ID: 123
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] │ Email: user@example.com
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] │ Token expires in: 3600 seconds
-2024-01-15 10:30:16 DEBUG [pysmartcocoon.api] └─────────────────────────────────────────────────────────
+logging.basicConfig(level=logging.DEBUG)
+logging.getLogger("pysmartcocoon").setLevel(logging.DEBUG)
 ```
 
-### Home Assistant Environment
+## Example output
 
-In Home Assistant, the output will include the thread information:
+A login, as the library logs it:
 
+```text
+DEBUG [pysmartcocoon.api] ┌─ API REQUEST ──────────────────────────────────────────────
+DEBUG [pysmartcocoon.api] │ Method: POST
+DEBUG [pysmartcocoon.api] │ URL: https://app.mysmartcocoon.com/api/auth/sign_in
+DEBUG [pysmartcocoon.api] │ Request body (JSON):
+{
+  "email": "y***@example.com",
+  "password": "**REDACTED**"
+}
+DEBUG [pysmartcocoon.api] └────────────────────────────────────────────────────────────
+DEBUG [pysmartcocoon.api] ┌─ API RESPONSE ─────────────────────────────────────────────
+DEBUG [pysmartcocoon.api] │ Status: 200
+DEBUG [pysmartcocoon.api] │ Headers:
+{
+  "access-token": "**REDACTED**",
+  "expiry": "1767225600",
+  "client": "**REDACTED**",
+  "uid": "y***@example.com",
+  ...
+}
+DEBUG [pysmartcocoon.api] ┌─ AUTHENTICATION SUCCESS ──────────────────────────────
+DEBUG [pysmartcocoon.api] │ User ID: 1218
+DEBUG [pysmartcocoon.api] │ Email: y***@example.com
 ```
-2024-01-15 10:30:15 DEBUG (MainThread) [pysmartcocoon.api] ┌─ API REQUEST ──────────────────────────────────────────────
-2024-01-15 10:30:15 DEBUG (MainThread) [pysmartcocoon.api] │ Method: POST
-2024-01-15 10:30:15 DEBUG (MainThread) [pysmartcocoon.api] │ URL: https://app.mysmartcocoon.com/api/auth/sign_in
-2024-01-15 10:30:15 DEBUG (MainThread) [pysmartcocoon.api] │ Headers: {'Content-Type': 'application/json', 'User-Agent': '...'}
-2024-01-15 10:30:15 DEBUG (MainThread) [pysmartcocoon.api] │ Request body (JSON): {'email': 'user@example.com', 'password': 'password'}
-2024-01-15 10:30:15 DEBUG (MainThread) [pysmartcocoon.api] └─────────────────────────────────────────────────────────────
+
+If you ever see a password or token in plain text, that is a bug. Please report it
+without attaching the log.
+
+## Seeing everything the API sends
+
+The library reads only the fields it knows about, so a field the API has started
+sending never shows up in a fan's properties. To see the raw payloads, redacted the
+same way, run:
+
+```bash
+export SC_USERNAME='you@example.com'
+read -s SC_PASSWORD && export SC_PASSWORD
+python scripts/dump_api_payloads.py
+```
+
+It writes `sc-api-dump-<timestamp>.json` and lists every key the library doesn't use.
+See [scripts/README.md](../scripts/README.md#dump_api_payloadspy).
+
+## Running the integration tests
+
+Integration tests log in to your real SmartCocoon account and **change your fans'
+settings**. They are skipped by default.
+
+```bash
+cp tests/template.env tests/.env    # then fill in USERNAME, PASSWORD, FAN_ID
+RUN_INTEGRATION=1 pytest -m integration -v -s
+```
+
+For everyday work, run only the unit tests:
+
+```bash
+pytest -m "not integration"
 ```
 
 ## Troubleshooting
 
-### No Debug Output
-
-- Ensure `RUN_INTEGRATION=1` is set (for development testing)
-- Check that your `.env` file has valid credentials
-- Verify logging level is set to DEBUG
-- Check that the logger configuration is correct in Home Assistant
-
-### Authentication Errors
-
-- Check your credentials in `tests/.env` or Home Assistant configuration
-- Look at the debug output for specific error details
-- Verify your SmartCocoon account is active
-- Check for missing required headers in API responses
-
-### Missing Dependencies
-
-- Install test dependencies: `pip install -r requirements_test.txt`
-- Ensure all required packages are installed
-- For Home Assistant: Ensure the custom component is properly installed
-
-### API Connection Issues
-
-- Check network connectivity
-- Verify the SmartCocoon API is accessible
-- Look for rate limiting or authentication token expiration
-- Check for changes in the API endpoints
-
-## Performance Considerations
-
-Debug logging generates a lot of output and may impact performance:
-
-- **Development**: Debug logging is fine for testing and development
-- **Home Assistant**: Only enable when troubleshooting issues
-- **Production**: Disable debug logging in production environments
-- **Log Rotation**: Consider log rotation for long-running systems
-
-### Recommended Usage
-
-1. **Enable** debug logging when:
-
-   - Setting up the integration for the first time
-   - Troubleshooting connection or authentication issues
-   - Investigating unexpected behavior
-   - Testing new features
-
-2. **Disable** debug logging when:
-   - Everything is working correctly
-   - Running in production
-   - Performance is a concern
-   - Log files are getting too large
-
-## Integration with Development Workflow
-
-The same debug logging that works in these tests will work in Home Assistant when you configure:
-
-```yaml
-logger:
-  logs:
-    pysmartcocoon: debug
-```
-
-This makes it easy to troubleshoot HA integration issues using the same debug output you see in development tests.
-
-## Additional Resources
-
-- [Home Assistant Logger Integration](https://www.home-assistant.io/integrations/logger/)
-- [Python Logging Documentation](https://docs.python.org/3/library/logging.html)
-- [PySmartCocoon Development Guide](DEVCONTAINER_README.md)
+- **No debug output in Home Assistant:** check that the logger name is
+  `pysmartcocoon`. The integration's domain, `smartcocoon`, matches no logger.
+- **`UnauthorizedError` after it was working:** an expired session is renewed
+  automatically, once. Seeing this error means the fresh login was refused too, which
+  usually means the password changed. Home Assistant will ask you to re-enter it.
+- **A fan shows as disconnected but the app shows it online:** see
+  [DEBUG_FAN_CONNECTION.md](../DEBUG_FAN_CONNECTION.md).

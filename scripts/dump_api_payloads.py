@@ -78,6 +78,7 @@ MODELLED_KEYS: dict[str, frozenset[str]] = {
             "target_temperature",
             "temperature",
             "thermostat_id",
+            "external_sensor",
         }
     ),
 }

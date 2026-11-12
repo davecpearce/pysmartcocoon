@@ -9,6 +9,7 @@ from aiohttp import ClientSession
 from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.const import API_URL, DEFAULT_TIMEOUT, EntityType, FanMode
 from pysmartcocoon.errors import RequestError, UnauthorizedError
+from pysmartcocoon.external_sensor import ExternalSensor
 from pysmartcocoon.fan import Fan
 from pysmartcocoon.location import Location
 from pysmartcocoon.room import Room
@@ -56,6 +57,15 @@ class SmartCocoonManager:
     def fans(self) -> dict[str, Any]:
         """Return list of Fans."""
         return self._fans
+
+    @property
+    def external_sensors(self) -> dict[int, ExternalSensor]:
+        """Return the paired sensors, keyed by the id of their room."""
+        return {
+            room_id: room.external_sensor
+            for room_id, room in self._rooms.items()
+            if room.external_sensor is not None
+        }
 
     async def async_start_services(self, username: str, password: str) -> bool:
         """Start services"""
@@ -135,6 +145,43 @@ class SmartCocoonManager:
                 self._rooms[room.identifier] = room
 
         return self._rooms
+
+    async def async_refresh_rooms(self) -> bool:
+        """Refresh every room, and the sensors paired to them, in one request.
+
+        Paired sensors are only reported inside `rooms`, so this is what a
+        poller calls to keep their readings current. It behaves like
+        async_refresh_fans: False means the request failed and every room
+        keeps its previous values; UnauthorizedError means the credentials
+        were rejected even after a fresh login.
+
+        Entries that cannot be read are logged and skipped, so one
+        malformed room does not cost the others their update.
+        """
+        entity = EntityType.ROOMS.value
+        try:
+            response = await self._api.async_request(
+                "GET", f"{API_URL}{entity}"
+            )
+        except RequestError as err:
+            _LOGGER.warning("Failed to refresh rooms: %s", err)
+            return False
+
+        if not response or entity not in response:
+            _LOGGER.warning("Room refresh returned no usable data")
+            return False
+
+        for data in response[entity]:
+            try:
+                room = Room(data=data)
+            except (KeyError, TypeError) as err:
+                _LOGGER.error(
+                    "Skipping room entry the library cannot read: %s", err
+                )
+                continue
+            self._rooms[room.identifier] = room
+
+        return True
 
     async def async_update_fans(self) -> dict[str, Fan]:
         """Update fans data.

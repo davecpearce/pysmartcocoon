@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - Unreleased
+
+### Added
+
+- **Paired external sensors** (ha-smartcocoon#422). SmartCocoon's temperature and humidity sensor is reported inside the room it is paired to, as an `external_sensor` object in the `rooms` response. `Room.external_sensor` now exposes it as an `ExternalSensor` with `temperature` (°C), `humidity` (%), `battery_level` (as sent), `battery_voltage`, `mac_address`, `updated_at` and `last_connection`. The battery value reads as millivolts (about 3000 on fresh batteries); that is inferred from live data, not documented.
+- **`SmartCocoonManager.async_refresh_rooms()`** refreshes every room, and so every paired sensor, in one request. It reports failure the same way as `async_refresh_fans`: `False` for a failed request, `UnauthorizedError` for rejected credentials. A malformed room is skipped rather than abandoning the refresh.
+- **`SmartCocoonManager.external_sensors`** lists the paired sensors, keyed by room id.
+- `scripts/dump_api_payloads.py` no longer reports `external_sensor` as unmodelled.
+
 ## [1.6.0] - 2026-11-03
 
 ### Changed

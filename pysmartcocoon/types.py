@@ -28,6 +28,23 @@ class FanPayload(TypedDict):
     mqtt_password: str
 
 
+class ExternalSensorPayload(TypedDict):
+    """A paired sensor, as nested in a room of the `rooms` response.
+
+    Checked against a live response on 2026-11-12. Unlike most fields,
+    the readings arrive as numbers.
+    """
+
+    id: int
+    mac_address: str
+    temperature: NotRequired[float]
+    humidity: NotRequired[float]
+    battery_level: NotRequired[float]
+    created_at: NotRequired[str]
+    updated_at: NotRequired[str]
+    last_connection: NotRequired[str]
+
+
 class FansResponse(TypedDict):
     """Response shape for listing fans."""
 

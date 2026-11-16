@@ -90,6 +90,19 @@ no API token.
 3. The `release.yml` workflow builds, checks and publishes the tag. It refuses to
    publish if the tag and `pyproject.toml` disagree.
 
+### Pre-releases
+
+For a feature that needs testing on real hardware first, publish a beta:
+
+```bash
+bumpver update --minor --tag beta   # 1.6.0 -> 1.7.0b0
+bumpver update --tag-num            # 1.7.0b0 -> 1.7.0b1
+bumpver update --tag final          # 1.7.0b1 -> 1.7.0
+```
+
+pip and Dependabot skip pre-releases unless a version is pinned exactly, so a beta
+reaches only a ha-smartcocoon pre-release that pins it.
+
 A release reaches Home Assistant users only after
 [ha-smartcocoon](https://github.com/davecpearce/ha-smartcocoon) updates its pin in
 `manifest.json` and `requirements.txt` and makes its own release.

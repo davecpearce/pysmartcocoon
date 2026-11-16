@@ -193,3 +193,20 @@ async def test_one_malformed_room_does_not_block_the_others() -> None:
     manager = _manager({"rooms": [broken, _room()]})
     assert await manager.async_refresh_rooms() is True
     assert set(manager.rooms) == {93694}
+
+
+@pytest.mark.asyncio
+async def test_update_rooms_skips_a_malformed_room() -> None:
+    """The older async_update_rooms, run at startup, no longer crashes."""
+    broken = _room(id=1)
+    del broken["name"]
+    manager = _manager({"rooms": [broken, _room()]})
+    rooms = await manager.async_update_rooms()
+    assert set(rooms) == {93694}
+
+
+@pytest.mark.asyncio
+async def test_update_rooms_swallows_rejected_credentials() -> None:
+    """async_update_rooms keeps its old contract: no exception."""
+    manager = _manager(UnauthorizedError("401"))
+    assert await manager.async_update_rooms() == {}

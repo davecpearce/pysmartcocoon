@@ -35,8 +35,8 @@ class ExternalSensorPayload(TypedDict):
     the readings arrive as numbers.
     """
 
-    id: int
-    mac_address: str
+    id: NotRequired[int]
+    mac_address: NotRequired[str]
     temperature: NotRequired[float]
     humidity: NotRequired[float]
     battery_level: NotRequired[float]

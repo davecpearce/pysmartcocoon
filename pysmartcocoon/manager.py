@@ -129,21 +129,16 @@ class SmartCocoonManager:
         return self._thermostats
 
     async def async_update_rooms(self) -> dict[int, Room]:
-        """Update rooms data"""
-        entity = EntityType.ROOMS.value
+        """Update rooms data.
+
+        Kept for existing callers. A failed refresh leaves the previous
+        values in place; use async_refresh_rooms to find out whether it
+        worked.
+        """
         try:
-            response = await self._api.async_request(
-                "GET", f"{API_URL}{entity}"
-            )
-        except (UnauthorizedError, RequestError) as err:
-            _LOGGER.debug("Failed to update rooms: %s", err)
-            return self._rooms
-
-        if response and entity in response:
-            for item in response[entity]:
-                room = Room(data=item)
-                self._rooms[room.identifier] = room
-
+            await self.async_refresh_rooms()
+        except UnauthorizedError as err:
+            _LOGGER.warning("Failed to refresh rooms: %s", err)
         return self._rooms
 
     async def async_refresh_rooms(self) -> bool:

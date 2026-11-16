@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`SmartCocoonManager.external_sensors`** lists the paired sensors, keyed by room id.
 - `scripts/dump_api_payloads.py` no longer reports `external_sensor` as unmodelled.
 
+### Fixed
+
+- `async_update_rooms`, run at startup, no longer stops at the first room it cannot read. It now wraps `async_refresh_rooms`, the way `async_update_fans` wraps `async_refresh_fans`.
+
 ## [1.6.0] - 2026-11-03
 
 ### Changed

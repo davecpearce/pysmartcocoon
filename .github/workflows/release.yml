@@ -11,6 +11,10 @@ on:
       # and does so silently, because no workflow run is ever created.
       - "[0-9]+.[0-9]+.[0-9]+"
       - "v[0-9]+.[0-9]+.[0-9]+"
+      # Pre-releases (`bumpver update --minor --tag beta` -> 1.7.0b0). Without
+      # these, a beta tag pushes and silently publishes nothing, as above.
+      - "[0-9]+.[0-9]+.[0-9]+b[0-9]+"
+      - "[0-9]+.[0-9]+.[0-9]+rc[0-9]+"
 
 # Minor version only, deliberately. setup-python treats an exact patch
 # ("3.13.2") as a hard match, and the runner image ships whichever patches it

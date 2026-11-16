@@ -5,6 +5,7 @@
 from typing import Any, Optional
 
 from pysmartcocoon.convert import as_float
+from pysmartcocoon.external_sensor import ExternalSensor
 
 
 class Room:  # pylint: disable=too-many-instance-attributes
@@ -28,6 +29,13 @@ class Room:  # pylint: disable=too-many-instance-attributes
         )
         self._temperature: Optional[float] = as_float(data["temperature"])
         self._thermostat_id: int = data["thermostat_id"]
+        # Only present when a SmartCocoon sensor is paired to the room.
+        sensor_data = data.get("external_sensor")
+        self._external_sensor: Optional[ExternalSensor] = (
+            ExternalSensor(sensor_data, room_id=self._identifier)
+            if isinstance(sensor_data, dict)
+            else None
+        )
 
     @property
     def identifier(self) -> int:
@@ -83,3 +91,8 @@ class Room:  # pylint: disable=too-many-instance-attributes
     def thermostat_id(self) -> int:
         """Return thermostate id"""
         return self._thermostat_id
+
+    @property
+    def external_sensor(self) -> Optional[ExternalSensor]:
+        """Return the sensor paired to this room, if there is one."""
+        return self._external_sensor

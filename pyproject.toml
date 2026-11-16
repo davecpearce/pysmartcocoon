@@ -50,7 +50,9 @@ Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
 current_version = "1.6.0"
-version_pattern = "MAJOR.MINOR.PATCH"
+# [PYTAGNUM] allows PEP 440 pre-releases (1.7.0b0, 1.7.0rc0); a final
+# release has no suffix, so normal --patch/--minor bumps are unchanged.
+version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
 tag = true

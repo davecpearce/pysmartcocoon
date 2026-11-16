@@ -10,7 +10,7 @@ exclude = ["node_modules*", "tests*", "dist*", "build*", ".git*", ".github*", ".
 
 [project]
 name = "pysmartcocoon"
-version = "1.6.0"
+version = "1.7.0b0"
 
 description = "Library built for Home Assistant to integrate with the SmartCocoon"
 readme = "README.md"
@@ -49,7 +49,7 @@ test = [
 Homepage = "https://github.com/davecpearce/pysmartcocoon"
 
 [tool.bumpver]
-current_version = "1.6.0"
+current_version = "1.7.0b0"
 # [PYTAGNUM] allows PEP 440 pre-releases (1.7.0b0, 1.7.0rc0); a final
 # release has no suffix, so normal --patch/--minor bumps are unchanged.
 version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"

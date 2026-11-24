@@ -12,6 +12,7 @@ import logging
 
 import pytest
 
+from pysmartcocoon import api as api_module
 from pysmartcocoon.api import SmartCocoonAPI
 from pysmartcocoon.const import API_AUTH_URL, API_HEADERS
 from pysmartcocoon.redact import REDACTED, mask_identifier, redact
@@ -46,6 +47,9 @@ def test_redaction_does_not_mutate_input() -> None:
         "secret",
         "authorization",
         "client",
+        "user_id",
+        "mqtt_username",
+        "MQTT_Username",
     ],
 )
 def test_sensitive_keys_are_redacted(key: str) -> None:
@@ -229,3 +233,84 @@ async def test_response_body_does_not_log_home_address(
     assert STREET not in caplog.text
     assert POSTAL not in caplog.text
     assert "Ottawa" in caplog.text
+
+
+def test_account_record_id_is_redacted_but_other_ids_kept() -> None:
+    """A bare id is the account number only beside the account's email."""
+    result = redact(
+        {
+            "data": {"id": 98765, "email": "dave@example.com"},
+            "fans": [{"id": 129138, "fan_id": "4125f4", "room_id": 2346}],
+        }
+    )
+    assert result["data"]["id"] == REDACTED
+    assert result["fans"][0] == {
+        "id": 129138,
+        "fan_id": "4125f4",
+        "room_id": 2346,
+    }
+
+
+ACCOUNT_ID = 98765
+
+
+@pytest.mark.asyncio
+async def test_debug_log_never_shows_the_account_number(
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Over the real logging paths: sign-in, then a fans response.
+
+    The account number appears as the sign-in reply's id, as user_id, and
+    inside every fan's MQTT username. None of it may reach the log.
+    """
+    from aiohttp import web  # pylint: disable=import-outside-toplevel
+    from aiohttp.test_utils import (  # pylint: disable=import-outside-toplevel
+        TestServer,
+    )
+
+    async def sign_in(_request: web.Request) -> web.Response:
+        return web.json_response(
+            {"data": {"id": ACCOUNT_ID, "email": "dave@example.com"}},
+            headers={"access-token": "tok", "expiry": "3600", "client": "c"},
+        )
+
+    async def fans(_request: web.Request) -> web.Response:
+        return web.json_response(
+            {
+                "fans": [
+                    {
+                        "fan_id": "4125f4",
+                        "user_id": ACCOUNT_ID,
+                        "mqtt_username": f"{ACCOUNT_ID}_4125f4",
+                        "mqtt_password": SECRET,
+                    }
+                ]
+            }
+        )
+
+    app = web.Application()
+    app.router.add_post("/auth/sign_in", sign_in)
+    app.router.add_get("/fans", fans)
+
+    caplog.set_level(logging.DEBUG, logger="pysmartcocoon")
+    async with TestServer(app) as server:
+        monkeypatch.setattr(
+            api_module, "API_AUTH_URL", str(server.make_url("/auth/sign_in"))
+        )
+        api = SmartCocoonAPI(request_timeout=5)
+        try:
+            assert await api.async_authenticate("dave@example.com", "pw")
+            data = await api.async_request(
+                "GET", str(server.make_url("/fans"))
+            )
+        finally:
+            await api.close()
+
+    # The caller still gets the real values; only the log is masked.
+    assert data is not None
+    assert data["fans"][0]["mqtt_username"] == f"{ACCOUNT_ID}_4125f4"
+    assert "User ID" in caplog.text
+    assert "4125f4" in caplog.text
+    assert str(ACCOUNT_ID) not in caplog.text
+    assert SECRET not in caplog.text

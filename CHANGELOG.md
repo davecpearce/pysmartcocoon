@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **Debug logs no longer show the account number.** It appeared as `user_id`, as the `id` in the sign-in reply, in the "User ID" line logged after signing in, and inside every fan's `mqtt_username` (`{user_id}_{fan_id}`). All are now replaced with `**REDACTED**`, along with the whole `mqtt_username`, which is half of a fan's MQTT identity. Fan, room and thermostat ids are kept. `scripts/dump_api_payloads.py` uses the same masking.
+
 ## [1.7.0] - 2026-11-18
 
 ### Added

@@ -30,6 +30,13 @@ _SECRET_KEY_PARTS: tuple[str, ...] = (
 # triple (access-token + client + uid), so it is a credential, not metadata.
 _SECRET_KEY_EXACT: frozenset[str] = frozenset({"client"})
 
+# The account number, and the fans' MQTT usernames, which are
+# `{user_id}_{fan_id}` and so carry it too. Neither is a login on its own,
+# but the MQTT username is half of a fan's broker identity and the account
+# number has no diagnostic value in a pasted log. Fully replaced: the
+# fan_id that matters for debugging is in every payload under its own key.
+_ACCOUNT_KEY_EXACT: frozenset[str] = frozenset({"user_id", "mqtt_username"})
+
 # Account identifiers rather than credentials. Partially masked instead of
 # removed, so debug output can still tell two accounts apart -- which is the
 # reason someone would want the value in the first place.
@@ -66,7 +73,11 @@ _LOCATION_KEY_EXACT: frozenset[str] = frozenset(
 
 def _is_secret(key: str) -> bool:
     lowered = key.lower()
-    if lowered in _SECRET_KEY_EXACT or lowered in _LOCATION_KEY_EXACT:
+    if (
+        lowered in _SECRET_KEY_EXACT
+        or lowered in _ACCOUNT_KEY_EXACT
+        or lowered in _LOCATION_KEY_EXACT
+    ):
         return True
     return any(part in lowered for part in _SECRET_KEY_PARTS)
 
@@ -98,8 +109,16 @@ def redact(obj: Any) -> Any:
     """
     if isinstance(obj, dict):
         result: dict[Any, Any] = {}
+        # The sign-in reply describes the account as {"id": ..., "email": ...},
+        # so there a bare "id" is the account number. Elsewhere "id" is an
+        # ordinary record id and is kept.
+        is_account = any(
+            isinstance(key, str) and key.lower() == "email" for key in obj
+        )
         for key, value in obj.items():
             if isinstance(key, str) and _is_secret(key):
+                result[key] = REDACTED
+            elif is_account and isinstance(key, str) and key.lower() == "id":
                 result[key] = REDACTED
             elif isinstance(key, str) and key.lower() in _IDENTIFIER_KEY_EXACT:
                 result[key] = mask_identifier(value)

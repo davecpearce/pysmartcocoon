@@ -18,7 +18,7 @@ from pysmartcocoon.const import (
     DEFAULT_TIMEOUT,
 )
 from pysmartcocoon.errors import RequestError, UnauthorizedError
-from pysmartcocoon.redact import mask_identifier, redact
+from pysmartcocoon.redact import REDACTED, mask_identifier, redact
 
 _LOGGER: logging.Logger = logging.getLogger(__name__)
 
@@ -271,11 +271,7 @@ class SmartCocoonAPI:
                 )
                 _LOGGER.debug(
                     "│ User ID: %s",
-                    (
-                        data["data"]["id"]
-                        if data and "data" in data
-                        else "Unknown"
-                    ),
+                    REDACTED if data and "data" in data else "Unknown",
                 )
                 _LOGGER.debug(
                     "│ Email: %s",

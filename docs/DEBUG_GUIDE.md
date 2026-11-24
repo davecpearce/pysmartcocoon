@@ -14,7 +14,8 @@ because these logs end up pasted into public GitHub issues.
 | Masked completely (`**REDACTED**`)                 | Partly masked                                          | Kept                           |
 | -------------------------------------------------- | ------------------------------------------------------ | ------------------------------ |
 | password, access token, client ID, `mqtt_password` | email addresses (`y***@example.com`), the `uid` header | city, state, country           |
-| street address, postal or zip code, coordinates    |                                                        | room, fan and thermostat names |
+| account number (`user_id`), `mqtt_username`        |                                                        | room, fan and thermostat names |
+| street address, postal or zip code, coordinates    |                                                        | fan, room and thermostat ids   |
 
 Room names and the equipment in your home are still visible, so read a log before
 posting it.
